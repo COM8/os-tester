@@ -247,7 +247,7 @@ class vm:
         assert self.vmDom
         imgType: Any = self.vmDom.screenshot(stream, 0)
 
-        with open(targetPath, "wb", encoding="utf-8") as f:
+        with open(targetPath, "wb") as f:
             streamBytes = stream.recv(262120)
             while streamBytes != b"":
                 f.write(streamBytes)
