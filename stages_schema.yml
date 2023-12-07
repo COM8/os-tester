@@ -1,0 +1,115 @@
+"$ref": "#/definitions/Root"
+definitions:
+    Root:
+        type: object
+        additionalProperties: false
+        properties:
+            stages:
+                type: array
+                items:
+                    "$ref": "#/definitions/Stage"
+        required:
+            - stages
+    Stage:
+        type: object
+        additionalProperties: false
+        properties:
+            stage:
+                type: string
+            timeout_s:
+                type: integer
+            check:
+                "$ref": "#/definitions/Check"
+            actions:
+                type: array
+                items:
+                    "$ref": "#/definitions/Action"
+        required:
+            - check
+            - stage
+            - timeout_s
+        title: stage
+    Action:
+        type: object
+        additionalProperties: false
+        properties:
+            keyboard_key:
+                "$ref": "#/definitions/Keyboard"
+            keyboard_text:
+                "$ref": "#/definitions/KeyboardText"
+            mouse_move:
+                "$ref": "#/definitions/MouseMove"
+            mouse_click:
+                "$ref": "#/definitions/MouseClick"
+            reboot:
+                type: null
+                description: "Requests the VM to reboot."
+        title: action
+    KeyboardKey:
+        type: object
+        additionalProperties: false
+        properties:
+            value:
+                type: string
+            duration_s:
+                type: number
+                description: "The pause in seconds after each action. <key_down> <pause for duration_s> <key_up> <pause for duration_s>"
+        required:
+            - value
+            - duration_s
+        title: keyboard_key
+    KeyboardText:
+        type: object
+        additionalProperties: false
+        properties:
+            value:
+                type: string
+                description: "The key presses to send send."
+            duration_s:
+                type: number
+                description: "The pause in seconds after each action. <key1_down> <pause for duration_s> <key1_up> <pause for duration_s> <key2_down> <pause for duration_s> <key2_up> <pause for duration_s>..."
+        required:
+            - value
+            - duration_s
+    MouseMove:
+        type: object
+        additionalProperties: false
+        properties:
+            x_rel:
+                type: number
+            y_rel:
+                type: number
+            duration_s:
+                type: number
+        required:
+            - x_rel
+            - y_rel
+            - duration_s
+        title: mouse_move
+    MouseClick:
+        type: object
+        additionalProperties: false
+        properties:
+            value:
+                type: string
+            duration_s:
+                type: number
+        required:
+            - value
+            - duration_s
+        title: mouse_click
+    Check:
+        type: object
+        additionalProperties: false
+        properties:
+            file:
+                type: string
+            mse_leq:
+                type: number
+            ssim_geq:
+                type: number
+        required:
+            - file
+            - mse_leq
+            - ssim_geq
+        title: check
