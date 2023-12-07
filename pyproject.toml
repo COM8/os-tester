@@ -24,7 +24,7 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Natural Language :: English"
 ]
-dependencies = ["scikit-image", "opencv-python", "libvirt-python", "PyYAML", "numpy", "matplotlib"]
+dependencies = ["scikit-image", "opencv-python-headless", "libvirt-python", "PyYAML", "numpy", "matplotlib"]
 
 [project.urls]
 "Homepage" = "https://github.com/AP-Sensing/os-tester"
