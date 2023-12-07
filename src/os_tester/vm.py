@@ -39,7 +39,8 @@ class vm:
         self.uuid = uuid
         self.stagesObj = stagesObj
         self.debugPlt = debugPlt
-        self.debugPlotObj = debugPlot()
+        if self.debugPlt:
+            self.debugPlotObj = debugPlot()
 
         self.vmDom = None
 
@@ -158,7 +159,8 @@ class vm:
             same: float = 1 if mse < stageObj.checkMseLeq and ssimIndex > stageObj.checkSsimGeq else 0
 
             print(f"MSE: {mse}, SSIM: {ssimIndex}, Images Same: {same}")
-            self.debugPlotObj.update_plot(refImg, curImg, difImg, mse, ssimIndex, same)
+            if self.debugPlt:
+                self.debugPlotObj.update_plot(refImg, curImg, difImg, mse, ssimIndex, same)
 
             # Break if it's the same image
             if same >= 1:
