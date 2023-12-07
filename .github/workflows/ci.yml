@@ -7,10 +7,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4.1.1
     - uses: actions/setup-python@v5.0.0
-    - name: Install pylint
+    - name: Install system dependencies
       run: |
         sudo apt update -y
-        apt install -y python3-libvirt libvirt-dev libvirt-clients qemu-system-x86 libvirt-daemon libvirt-daemon-system
+        sudo apt install -y python3-libvirt libvirt-dev libvirt-clients qemu-system-x86 libvirt-daemon libvirt-daemon-system
+    - name: Install python dependencies
+      run: |
         python -m pip install --upgrade pip
         pip install pylint
         pip install -r requirements.txt
