@@ -12,6 +12,9 @@ maintainers = [
   { name="Fabian Sauter", email="fabian.sauter+pip@apsensing.com" }
 ]
 description = "A Python pip package to automate testing of whole operating systems with an image recognition based approach and libvirt (qemu). Inspired by openQA."
+readme = {file = "README.md", content-type = "text/markdown"}
+license = {text = "GNU General Public License v3 (GPLv3)"}
+keywords = ["testing", "os", "qemu", "libvirt"]
 requires-python = ">=3.7"
 classifiers = [
     "Programming Language :: Python :: 3 :: Only",
@@ -25,4 +28,40 @@ dependencies = ["scikit-image", "opencv-python", "libvirt-python", "PyYAML", "nu
 
 [project.urls]
 "Homepage" = "https://github.com/AP-Sensing/os-tester"
-"Bug Tracker" = "https://github.com/AP-Sensing/os-tester/issues"
+"Repository" = "https://github.com/AP-Sensing/os-tester"
+"Issues" = "https://github.com/AP-Sensing/os-tester/issues"
+
+[tool.mypy]
+python_version = 3.9
+ignore_missing_imports = true
+disallow_incomplete_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+no_implicit_reexport = true
+strict_equality = true
+pretty = true
+
+[tool.pylint.master]
+jobs = 1
+
+[tool.pylint.message_control]
+disable = ["line-too-long", # we have another hook for this
+    "wrong-import-position", # we have another hook for this
+    "no-member", # mypy does this job with less false positives
+    "fixme", # prevents users from committing things with a TODO in comments. Having more frequent commits is desirable
+    "missing-module-docstring", # do not care
+    "invalid-name", # do not care
+    "use-list-literal", # do not like it
+    "too-many-arguments", # do not care
+    "too-few-public-methods", # do not care
+    "broad-exception-raised", # do not care
+]
+
+[tool.black]
+line-length = 240
+
+[tool.isort]
+profile = "black"
+line_length = 240

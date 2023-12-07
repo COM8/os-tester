@@ -1,43 +1,56 @@
-import yaml
+import sys
 from os import path
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
+import yaml  # type: ignore
 
 
 class stage:
+    """
+    A single stage with reference image, thresholds and actions to perform once the threshold is reached.
+    """
+
     name: str
     timeoutS: float
     checkFile: str
-    checkMseLeq: str
-    checkSsimGeq: str
+    checkMseLeq: float
+    checkSsimGeq: float
     actions: List[Dict[str, Any]]
 
-    def __init__(self, stage: Dict[str, Any], basePath: str):
-        self.name = stage["stage"]
-        self.timeoutS = stage["timeout_s"]
-        self.checkFile = path.join(basePath, stage["check"]["file"])
-        self.checkMseLeq = stage["check"]["mse_leq"]
-        self.checkSsimGeq = stage["check"]["ssim_geq"]
-        self.actions = stage["actions"] if "actions" in stage else list()
+    def __init__(self, stageDict: Dict[str, Any], basePath: str):
+        self.name = stageDict["stage"]
+        self.timeoutS = stageDict["timeout_s"]
+        self.checkFile = path.join(basePath, stageDict["check"]["file"])
+        self.checkMseLeq = stageDict["check"]["mse_leq"]
+        self.checkSsimGeq = stageDict["check"]["ssim_geq"]
+        self.actions = stageDict["actions"] if "actions" in stageDict else list()
 
 
 class stages:
+    """
+    A list of stages that are used to automate the VM process.
+    """
+
     basePath: str
     stagesList: List[stage]
 
     def __load_stages(self) -> None:
+        """
+        Loads the stage definition from 'self.basePath' and stores the result inside 'self.stagesList'.
+        """
         ymlFile: str = path.join(self.basePath, "stages.yml")
         print(f"Loading stages from: {ymlFile}")
 
         if not path.exists(ymlFile):
             print(f"Stage config at '{ymlFile}' not found!")
-            exit(2)
+            sys.exit(2)
 
         if not path.isfile(ymlFile):
             print(f"Stage config at '{ymlFile}' is no file!")
-            exit(3)
+            sys.exit(3)
 
         stagesDict: Dict[str, Any]
-        with open(ymlFile, "r") as file:
+        with open(ymlFile, "r", encoding="utf-8") as file:
             stagesDict = yaml.safe_load(file)
 
         self.stagesList = list()

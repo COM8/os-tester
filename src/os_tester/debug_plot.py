@@ -1,9 +1,14 @@
-from typing import List, Any
-import matplotlib.pyplot as plt
+from typing import Any, List
+
 import cv2
+import matplotlib.pyplot as plt
 
 
 class debugPlot:
+    """
+    A wrapper class around a matplotlib plot to visualize the current image output detection.
+    """
+
     mseValues: List[float]
     ssimValues: List[float]
     sameImageValues: List[float]
@@ -31,6 +36,17 @@ class debugPlot:
         ssim: float,
         same: float,
     ) -> None:
+        """
+        Takes the measured and reference image dif and updates the plot accordingly.
+
+        Args:
+            refImg (cv2.typing.MatLike): The reference image we are waiting for.
+            curImg (cv2.typing.MatLike): The current VM output image.
+            difImage (cv2.typing.MatLike): |refImg - curImg| aka the diff of those images.
+            mse (float): The mean square error between refImg and curImg.
+            ssim (float): The structural similarity index error between refImg and curImg.
+            same (float): 1 if refImg and curImg are equal enough and 0 else.
+        """
         self.mseValues.append(mse)
         self.ssimValues.append(ssim)
         self.sameImageValues.append(same)
