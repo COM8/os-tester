@@ -102,17 +102,11 @@ def get_vm_xml(name: str, title: str, uuid: str, isoPath: str, vmImagePath: str)
     """
 
 if __name__ == "__main__":
-    # Load stages automation.
-    # We expect the `stages.yml` and referenced files inside the stages directory.
-    basePath: str = "stages"
-    stagesObj: stages = stages(basePath)
-    print(stagesObj)
-
     # Connect to qemu
     conn: libvirt.virConnect = libvirt.open("qemu:///system")
 
     uuid: str = "1e6cae9f-41d7-4fca-8033-fbd538a65173" # Replace with your (random?) UUID
-    vmObj: vm = vm(conn, uuid, stagesObj, debugPlt=False)
+    vmObj: vm = vm(conn, uuid, debugPlt=False)
 
     # Delete eventually existing VMs
     if vmObj.try_load():
@@ -133,7 +127,13 @@ if __name__ == "__main__":
     )
     vmObj.create(vmXml)
 
-    vmObj.run_stages()
+    # Load stages automation.
+    # We expect the `stages.yml` and referenced files inside the stages directory.
+    basePath: str = "stages"
+    stagesObj: stages = stages(basePath)
+    print(stagesObj)
+    
+    vmObj.run_stages(stagesObj)
 
     print("All stages done. Exiting...")
     conn.close()

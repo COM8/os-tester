@@ -25,19 +25,16 @@ class vm:
     debugPlt: bool
 
     vmDom: Optional[libvirt.virDomain]
-    stagesObj: stages
     debugPlotObj: debugPlot
 
     def __init__(
         self,
         conn: libvirt.virConnect,
         uuid: str,
-        stagesObj: stages,
         debugPlt: bool = False,
     ):
         self.conn = conn
         self.uuid = uuid
-        self.stagesObj = stagesObj
         self.debugPlt = debugPlt
         if self.debugPlt:
             self.debugPlotObj = debugPlot()
@@ -184,12 +181,12 @@ class vm:
         duration: float = time() - start
         print(f"Stage '{stageObj.name}' finished after {duration}s.")
 
-    def run_stages(self) -> None:
+    def run_stages(self, stagesObj: stages) -> None:
         """
         Executes all stages defined for the current VM and awaits every stage to finish before returning.
         """
         stageObj: stage
-        for stageObj in self.stagesObj.stagesList:
+        for stageObj in stagesObj.stagesList:
             self.__run_stage(stageObj)
 
     def try_load(self) -> bool:
