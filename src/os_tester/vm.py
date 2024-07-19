@@ -173,6 +173,7 @@ class vm:
                 print(f"path number: {index}")
                 return stageObj.pathsList[resultindex]
             
+            # if timeout is exided
             elif start + timeoutinS >= time():
                 print(f"timeout was called after {timeoutinS}")
                 exit(5)
@@ -186,6 +187,8 @@ class vm:
 
         Args:
             stageObj (stage): The stage to execute/await for the image.
+        Returns:
+            str: with the name of the next requested Stage
         """
         start: float = time()
         print(f"Running stage '{stageObj.name}'.")
@@ -194,9 +197,9 @@ class vm:
         self.__perform_stage_actions(stageObj)
 
         duration: float = time() - start
-        print(f"Stage '{stageObj.name}' finished after {duration}s. Next Step is: '{subPath.nextStep}'")
+        print(f"Stage '{stageObj.name}' finished after {duration}s. Next Stage is: '{subPath.nextStage}'")
         
-        return subPath.nextStep
+        return subPath.nextStage
 
     def run_stages(self, stagesObj: stages) -> None:
         """
