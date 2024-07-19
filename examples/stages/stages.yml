@@ -3,49 +3,84 @@
 stages:
   - stage: Bootloader Selection
     timeout_s: 15
-    check:
-      file: 0.png
-      mse_leq: 0.1
-      ssim_geq: 0.99
-    actions:
-      - keyboard_key:
-          value: up
-          duration_s: 0.25
-      - keyboard_key:
-          value: ret
-          duration_s: 0.25
+    paths:
+      - path:
+          check:
+            file: 0.png
+            mse_leq: 0.1
+            ssim_geq: 0.99
+          actions:
+            - keyboard_key:
+                value: up
+                duration_s: 0.25
+            - keyboard_key:
+                value: ret
+                duration_s: 0.25
+          nextStage: Installation Started
+      - path:
+          check:
+            file: 0_1.png
+            mse_leq: 0.1
+            ssim_geq: 0.99
+          actions:
+            - keyboard_key:
+                value: up
+                duration_s: 0.25
+            - keyboard_key:
+                value: up
+                duration_s: 0.25
+            - keyboard_key:
+                value: ret
+                duration_s: 0.25
+          nextStage: Installation Started
+
   - stage: Installation Started
     timeout_s: 600
-    check:
-      file: 1.png
-      mse_leq: 0.1
-      ssim_geq: 0.99
+    paths:
+      - path:
+          check:
+            file: 1.png
+            mse_leq: 0.1
+            ssim_geq: 0.99
+          actions:
+            - keyboard_key:
+                value: up
+                duration_s: 0.25
+          nextStage: Installation Complete
+
   - stage: Installation Complete
     timeout_s: 600
-    check:
-      file: 2.png
-      mse_leq: 0.1
-      ssim_geq: 0.99
-    actions:
-      - keyboard_key:
-          value: tab
-          duration_s: 0.25
-      - keyboard_key:
-          value: tab
-          duration_s: 0.25
-      - keyboard_key:
-          value: ret
-          duration_s: 0.25
+    paths:
+      - path:
+          check:
+            file: 2.png
+            mse_leq: 0.1
+            ssim_geq: 0.99
+          actions:
+            - keyboard_key:
+                value: tab
+                duration_s: 0.25
+            - keyboard_key:
+                value: tab
+                duration_s: 0.25
+            - keyboard_key:
+                value: ret
+                duration_s: 0.25
+          nextStage: Enter LUKS Password
+
   - stage: Enter LUKS Password
     timeout_s: 600
-    check:
-      file: 3.png
-      mse_leq: 0.1
-      ssim_geq: 0.99
-    actions:
-      - keyboard_text:
-          value: something
-          duration_s: 0.25
-      - keyboard_key:
-          value: ret
-          duration_s: 0.25
+    paths:
+      - path:
+          check:
+            file: 3.png
+            mse_leq: 0.1
+            ssim_geq: 0.99
+          actions:
+            - keyboard_text:
+                value: something
+                duration_s: 0.25
+            - keyboard_key:
+                value: ret
+                duration_s: 0.25
+          nextStage: None
