@@ -131,40 +131,53 @@ class vm:
         Args:
             stageObj (stage): The stage we want to await for.
         """
-        refImgPath: str = stageObj.checkFile
-        if not path.exists(refImgPath):
-            print(f"Stage ref image file '{refImgPath}' not found!")
-            sys.exit(2)
+        timeoutinS = stageObj.timeoutS
+        start = time()
+        refImgList = list()
+        for subpath in stageObj.pathsList:
+            refImgPath: str = subpath.checkFile
+            if not path.exists(refImgPath):
+                print(f"Stage ref image file '{refImgPath}' not found!")
+                sys.exit(2)
 
-        if not path.isfile(refImgPath):
-            print(f"Stage ref image file '{refImgPath}' is no file!")
-            sys.exit(3)
-
-        refImg: cv2.typing.MatLike = cv2.imread(refImgPath)
-
+            if not path.isfile(refImgPath):
+                print(f"Stage ref image file '{refImgPath}' is no file!")
+                sys.exit(3)
+                
+            refImgList.append(cv2.imread(refImgPath))
         while True:
             curImgPath: str = f"/tmp/{self.uuid}_check.png"
-            self.take_screenshot(curImgPath)
-            print("Screenshoot taken.")
+            self.take_screenshot_debug(curImgPath)
+            print("ScreenShoot taken.")
             curImg: cv2.typing.MatLike = cv2.imread(curImgPath)
 
             mse: float
             ssimIndex: float
             difImg: cv2.typing.MatLike
-            mse, ssimIndex, difImg = self.__comp_images(curImg, refImg)
+            
+            resultindex: int = -1
+            for index, refImg in enumerate(refImgList, start=0):
+                mse, ssimIndex, difImg = self.__comp_images(curImg, refImg)
 
-            same: float = 1 if mse < stageObj.checkMseLeq and ssimIndex > stageObj.checkSsimGeq else 0
+                same: float = 1 if mse < subpath.checkMseLeq and ssimIndex > subpath.checkSsimGeq else 0
+                print(f"MSE: {mse}, SSIM: {ssimIndex}, Images Same: {same}")
+                
+                # break if a image was found
+                if same >= 1:
+                    resultindex = index
+                    break
+                
+            if resultindex != -1:
+                print(f"path number: {index}")
+                return stageObj.pathsList[resultindex]
+            
+            elif start + timeoutinS >= time():
+                print(f"timeout was called after {timeoutinS}")
+                exit(5)
+                
+            sleep(0.25)
 
-            print(f"MSE: {mse}, SSIM: {ssimIndex}, Images Same: {same}")
-            if self.debugPlt:
-                self.debugPlotObj.update_plot(refImg, curImg, difImg, mse, ssimIndex, same)
-
-            # Break if it's the same image
-            if same >= 1:
-                break
-            sleep(1)
-
-    def __run_stage(self, stageObj: stage) -> None:
+    def __run_stage(self, stageObj: stage) -> str:
         """
         1. Awaits until we reach the current stage reference image.
         2. Executes all actions defined by this stage.
@@ -175,19 +188,27 @@ class vm:
         start: float = time()
         print(f"Running stage '{stageObj.name}'.")
 
-        self.__wait_for_stage_done(stageObj)
+        subPath: subpath = self.__wait_for_stage_done(stageObj)
         self.__perform_stage_actions(stageObj)
 
         duration: float = time() - start
-        print(f"Stage '{stageObj.name}' finished after {duration}s.")
+        print(f"Stage '{stageObj.name}' finished after {duration}s. Next Step is: '{subPath.nextStep}'")
+        
+        return subPath.nextStep
 
     def run_stages(self, stagesObj: stages) -> None:
         """
         Executes all stages defined for the current VM and awaits every stage to finish before returning.
         """
-        stageObj: stage
-        for stageObj in stagesObj.stagesList:
-            self.__run_stage(stageObj)
+        nextStep = stagesObj.stagesList[0]
+        while True:
+            nextStepName = self.__run_stage(nextStep)
+            if nextStepName == "None":
+                break
+            for stage in stagesObj.stagesList:
+                if stage.name == nextStepName:
+                    nextStep = stage
+                    break
 
     def try_load(self) -> bool:
         """
