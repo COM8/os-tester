@@ -147,7 +147,7 @@ class vm:
             refImgList.append(cv2.imread(refImgPath))
         while True:
             curImgPath: str = f"/tmp/{self.uuid}_check.png"
-            self.take_screenshot_debug(curImgPath)
+            self.take_screenshot(curImgPath)
             print("ScreenShoot taken.")
             curImg: cv2.typing.MatLike = cv2.imread(curImgPath)
 
