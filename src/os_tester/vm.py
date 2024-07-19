@@ -12,7 +12,7 @@ import numpy as np
 from skimage.metrics import structural_similarity as ssimFunc
 
 from os_tester.debug_plot import debugPlot
-from os_tester.stages import stage, stages
+from os_tester.stages import stage, stages, subpath
 
 
 class vm:
@@ -161,6 +161,8 @@ class vm:
 
                 same: float = 1 if mse < subpath.checkMseLeq and ssimIndex > subpath.checkSsimGeq else 0
                 print(f"MSE: {mse}, SSIM: {ssimIndex}, Images Same: {same}")
+                if self.debugPlt:
+                    self.debugPlotObj.update_plot(refImg, curImg, difImg, mse, ssimIndex, same)
                 
                 # break if a image was found
                 if same >= 1:
@@ -198,17 +200,23 @@ class vm:
 
     def run_stages(self, stagesObj: stages) -> None:
         """
-        Executes all stages defined for the current VM and awaits every stage to finish before returning.
+        Executes all stages defined for the current PC and awaits every stage to finish before returning.
+        If no name with requested StageName found exit with error
         """
-        nextStep = stagesObj.stagesList[0]
+        nextStage = stagesObj.stagesList[0]
         while True:
-            nextStepName = self.__run_stage(nextStep)
-            if nextStepName == "None":
+            nextStageName = self.__run_stage(nextStage)
+            # if nextStageName is None exit program
+            if nextStageName == "None":
                 break
             for stage in stagesObj.stagesList:
-                if stage.name == nextStepName:
-                    nextStep = stage
+                # if the expected next Stage name is found break
+                if stage.name == nextStageName:
+                    nextStage = stage
                     break
+                else:
+                    print(f"No Stage named {nextStageName} was found ")
+                    exit(10)
 
     def try_load(self) -> bool:
         """
