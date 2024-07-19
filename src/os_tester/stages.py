@@ -13,7 +13,7 @@ class subpath:
     
     checkMseLeq: float
     checkSsimGeq: float
-    nextStep: str
+    nextStage: str
     actions: List[Dict[str, Any]]
     
     def __init__(self, pathDict: Dict[str, Any], basePath: str):
@@ -21,7 +21,7 @@ class subpath:
         self.checkMseLeq = pathDict["check"]["mse_leq"]
         self.checkSsimGeq = pathDict["check"]["ssim_geq"]
         self.actions = pathDict["actions"] if "actions" in pathDict else list()
-        self.nextStep = pathDict["nextStage"]
+        self.nextStage = pathDict["nextStage"]
 
 class stage:
     """
