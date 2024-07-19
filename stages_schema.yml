@@ -9,7 +9,7 @@ definitions:
                 items:
                     "$ref": "#/definitions/Stage"
         required:
-            - stages
+            - stage
     Stage:
         type: object
         additionalProperties: false
@@ -18,17 +18,33 @@ definitions:
                 type: string
             timeout_s:
                 type: integer
+            paths:
+                type: array
+                items:
+                    "$ref": "#/definitions/Path"
+        required:
+            - stage
+            - timeout_s
+            - paths
+        title: stage
+    Path:
+        type: object
+        additionalProperties: false
+        properties:
             check:
+                type: object
                 "$ref": "#/definitions/Check"
             actions:
                 type: array
                 items:
                     "$ref": "#/definitions/Action"
+            nextStage:
+                type: string
         required:
             - check
-            - stage
-            - timeout_s
-        title: stage
+            - actions
+            - nextStage
+        title: path
     Action:
         type: object
         additionalProperties: false
