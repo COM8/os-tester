@@ -4,7 +4,7 @@ from os import path
 from typing import Any, Dict, List
 import yaml  # type: ignore
 
-class subpath:
+class subPath:
     """
     A single path with reference image, thresholds and actions to perform once the threshold is reached.
     """
@@ -25,12 +25,12 @@ class subpath:
 
 class stage:
     """
-    A single stage with the timeout
+    A single stage with timeout
     """
     
     name: str
     timeoutS: float
-    pathsList: List[subpath]
+    pathsList: List[subPath]
 
     def __init__(self, stageDict: Dict[str, Any], basePath: str):
         self.name = stageDict["stage"]
@@ -39,7 +39,7 @@ class stage:
         self.pathsList = list()
         pathDict: Dict[str, Any]
         for pathDict in stageDict["paths"]:
-            self.pathsList.append(subpath(pathDict["path"], basePath))
+            self.pathsList.append(subPath(pathDict["path"], basePath))
             
         
 
@@ -52,11 +52,11 @@ class stages:
     basePath: str
     stagesList: List[stage]
 
-    def __load_stages(self,yamlFileName: str) -> None:
+    def __load_stages(self, yamlFileName: str) -> None:
         """
         Loads the stage definition from 'self.basePath' and stores the result inside 'self.stagesList'.
         """
-        ymlFilePath: str = path.join(self.basePath,yamlFileName+".yml")
+        ymlFilePath: str = path.join(self.basePath, yamlFileName + ".yml")
         print(f"Loading stages from: {ymlFilePath}")
 
         if not path.exists(ymlFilePath):
