@@ -12,7 +12,7 @@ import numpy as np
 from skimage.metrics import structural_similarity as ssimFunc
 
 from os_tester.debug_plot import debugPlot
-from os_tester.stages import stage, stages, subpath
+from os_tester.stages import stage, stages, subPath
 
 
 class vm:
@@ -193,13 +193,13 @@ class vm:
         start: float = time()
         print(f"Running stage '{stageObj.name}'.")
 
-        subPath: subpath = self.__wait_for_stage_done(stageObj)
+        subpath: subPath = self.__wait_for_stage_done(stageObj)
         self.__perform_stage_actions(stageObj)
 
         duration: float = time() - start
-        print(f"Stage '{stageObj.name}' finished after {duration}s. Next Stage is: '{subPath.nextStage}'")
+        print(f"Stage '{stageObj.name}' finished after {duration}s. Next Stage is: '{subpath.nextStage}'")
         
-        return subPath.nextStage
+        return subpath.nextStage
 
     def run_stages(self, stagesObj: stages) -> None:
         """
