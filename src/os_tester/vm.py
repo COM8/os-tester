@@ -175,8 +175,8 @@ class vm:
                 return stageObj.pathsList[resultIndex]
 
             # if timeout is exited
-            if start + timeoutInS >= time():
-                print(f"timeout was called after {timeoutInS}")
+            if start + timeoutInS < time():
+                print(f"Tiemout for stage '{stageObj.name}' reached after {timeoutInS} seconds.")
                 sys.exit(5)
 
             sleep(0.25)
@@ -213,12 +213,17 @@ class vm:
             # if nextStageName is None exit program
             if nextStageName == "None":
                 break
+            found: bool = False
             for stageObj in stagesObj.stagesList:
-                # if the expected next Stage name is found break
+                # If the expected next Stage name is found break and continue with that stage
                 if stageObj.name == nextStageName:
                     nextStage = stageObj
+                    found = True
                     break
-                print(f"No Stage named {nextStageName} was found ")
+
+            # Exit if no matching stage was found
+            if not found:
+                print(f"No Stage named '{nextStageName}' was found ")
                 sys.exit(10)
 
     def try_load(self) -> bool:
