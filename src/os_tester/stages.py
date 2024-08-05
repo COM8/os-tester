@@ -1,21 +1,22 @@
 import sys
-
 from os import path
 from typing import Any, Dict, List
+
 import yaml  # type: ignore
+
 
 class subPath:
     """
     A single path with reference image, thresholds and actions to perform once the threshold is reached.
     """
-    
+
     checkFile: str
-    
+
     checkMseLeq: float
     checkSsimGeq: float
     nextStage: str
     actions: List[Dict[str, Any]]
-    
+
     def __init__(self, pathDict: Dict[str, Any], basePath: str):
         self.checkFile = path.join(basePath, pathDict["check"]["file"])
         self.checkMseLeq = pathDict["check"]["mse_leq"]
@@ -23,11 +24,12 @@ class subPath:
         self.actions = pathDict["actions"] if "actions" in pathDict else list()
         self.nextStage = pathDict["nextStage"]
 
+
 class stage:
     """
     A single stage with timeout
     """
-    
+
     name: str
     timeoutS: float
     pathsList: List[subPath]
@@ -35,13 +37,11 @@ class stage:
     def __init__(self, stageDict: Dict[str, Any], basePath: str):
         self.name = stageDict["stage"]
         self.timeoutS = stageDict["timeout_s"]
-        
+
         self.pathsList = list()
         pathDict: Dict[str, Any]
         for pathDict in stageDict["paths"]:
             self.pathsList.append(subPath(pathDict["path"], basePath))
-            
-        
 
 
 class stages:
@@ -76,6 +76,6 @@ class stages:
         for stageDict in stagesDict["stages"]:
             self.stagesList.append(stage(stageDict, self.basePath))
 
-    def __init__(self, basePath: str,yamlFileName: str):
+    def __init__(self, basePath: str, yamlFileName: str):
         self.basePath = basePath
         self.__load_stages(yamlFileName)

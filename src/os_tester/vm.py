@@ -3,7 +3,7 @@ import sys
 from contextlib import suppress
 from os import path, remove
 from time import sleep, time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import cv2
 import libvirt
@@ -41,14 +41,15 @@ class vm:
 
         self.vmDom = None
 
-    def __perform_stage_actions(self, stageObj: stage) -> None:
+    def __perform_stage_actions(self, actions: List[Dict[str, Any]]) -> None:
         """
         Performs all stage actions (mouse_move, keyboard_key, reboot, ...) on the current VM.
 
         Args:
-            stageObj (stage): The stage the actions should be performed for.
+            actions (List[Dict[str, Any]]): A list of actions that should be performed
         """
-        for action in stageObj.actions:
+        action: Dict[str, Any]
+        for action in actions:
             if "mouse_move" in action:
                 self.__send_mouse_move_action(action["mouse_move"])
             elif "mouse_click" in action:
@@ -124,18 +125,18 @@ class vm:
 
         return (mse, ssimIndex, difImg)
 
-    def __wait_for_stage_done(self, stageObj: stage) -> None:
+    def __wait_for_stage_done(self, stageObj: stage) -> subPath:
         """
         Returns once the given stages reference image is reached.
 
         Args:
             stageObj (stage): The stage we want to await for.
         """
-        timeoutinS = stageObj.timeoutS
+        timeoutInS = stageObj.timeoutS
         start = time()
         refImgList = list()
-        for subpath in stageObj.pathsList:
-            refImgPath: str = subpath.checkFile
+        for subPathObj in stageObj.pathsList:
+            refImgPath: str = subPathObj.checkFile
             if not path.exists(refImgPath):
                 print(f"Stage ref image file '{refImgPath}' not found!")
                 sys.exit(2)
@@ -143,7 +144,7 @@ class vm:
             if not path.isfile(refImgPath):
                 print(f"Stage ref image file '{refImgPath}' is no file!")
                 sys.exit(3)
-                
+
             refImgList.append(cv2.imread(refImgPath))
         while True:
             curImgPath: str = f"/tmp/{self.uuid}_check.png"
@@ -154,30 +155,30 @@ class vm:
             mse: float
             ssimIndex: float
             difImg: cv2.typing.MatLike
-            
-            resultindex: int = -1
+
+            resultIndex: int = -1
             for index, refImg in enumerate(refImgList, start=0):
                 mse, ssimIndex, difImg = self.__comp_images(curImg, refImg)
 
-                same: float = 1 if mse < subpath.checkMseLeq and ssimIndex > subpath.checkSsimGeq else 0
+                same: float = 1 if mse < subPathObj.checkMseLeq and ssimIndex > subPathObj.checkSsimGeq else 0
                 print(f"MSE: {mse}, SSIM: {ssimIndex}, Images Same: {same}")
                 if self.debugPlt:
                     self.debugPlotObj.update_plot(refImg, curImg, difImg, mse, ssimIndex, same)
-                
+
                 # break if a image was found
                 if same >= 1:
-                    resultindex = index
+                    resultIndex = index
                     break
-                
-            if resultindex != -1:
+
+            if resultIndex != -1:
                 print(f"path number: {index}")
-                return stageObj.pathsList[resultindex]
-            
-            # if timeout is exided
-            elif start + timeoutinS >= time():
-                print(f"timeout was called after {timeoutinS}")
-                exit(5)
-                
+                return stageObj.pathsList[resultIndex]
+
+            # if timeout is exited
+            if start + timeoutInS >= time():
+                print(f"timeout was called after {timeoutInS}")
+                sys.exit(5)
+
             sleep(0.25)
 
     def __run_stage(self, stageObj: stage) -> str:
@@ -193,13 +194,13 @@ class vm:
         start: float = time()
         print(f"Running stage '{stageObj.name}'.")
 
-        subpath: subPath = self.__wait_for_stage_done(stageObj)
-        self.__perform_stage_actions(stageObj)
+        subPathObj: subPath = self.__wait_for_stage_done(stageObj)
+        self.__perform_stage_actions(subPathObj.actions)
 
         duration: float = time() - start
-        print(f"Stage '{stageObj.name}' finished after {duration}s. Next Stage is: '{subpath.nextStage}'")
-        
-        return subpath.nextStage
+        print(f"Stage '{stageObj.name}' finished after {duration}s. Next Stage is: '{subPathObj.nextStage}'")
+
+        return subPathObj.nextStage
 
     def run_stages(self, stagesObj: stages) -> None:
         """
@@ -212,14 +213,13 @@ class vm:
             # if nextStageName is None exit program
             if nextStageName == "None":
                 break
-            for stage in stagesObj.stagesList:
+            for stageObj in stagesObj.stagesList:
                 # if the expected next Stage name is found break
-                if stage.name == nextStageName:
-                    nextStage = stage
+                if stageObj.name == nextStageName:
+                    nextStage = stageObj
                     break
-                else:
-                    print(f"No Stage named {nextStageName} was found ")
-                    exit(10)
+                print(f"No Stage named {nextStageName} was found ")
+                sys.exit(10)
 
     def try_load(self) -> bool:
         """
