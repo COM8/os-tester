@@ -235,9 +235,15 @@ stages:
 
 To build the pip package run:
 ```bash
+rm -rf dist/
 python3 -m build
 ```
 The output is then available inside the `dist/` directory.
+
+## Upload
+```bash
+twine upload dist/*
+```
 
 ## pre-commit
 Before committing you have to run `pre-commit` to check for linting and type errors.
