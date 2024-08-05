@@ -9,7 +9,7 @@ import cv2
 import libvirt
 import libvirt_qemu
 import numpy as np
-from skimage.metrics import structural_similarity as ssimFunc
+from skimage import metrics as skimage_metrics
 
 from os_tester.debug_plot import debugPlot
 from os_tester.stages import stage, stages, subPath
@@ -121,7 +121,7 @@ class vm:
         mse, difImg = self.__img_mse(curImgResized, refImg)
 
         # Compute SSIM
-        ssimIndex: float = ssimFunc(curImgResized, refImg, channel_axis=-1)
+        ssimIndex: float = skimage_metrics.structural_similarity(curImgResized, refImg, channel_axis=-1)
 
         return (mse, ssimIndex, difImg)
 
