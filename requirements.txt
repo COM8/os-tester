@@ -1,4 +1,4 @@
-scikit-image
+scikit-image == 0.24.0
 opencv-python-headless
 libvirt-python
 PyYAML
