@@ -63,6 +63,9 @@ class vm:
             elif "reboot" in action:
                 assert self.vmDom
                 self.vmDom.reboot()
+            elif "shutdown" in action:
+                assert self.vmDom
+                self.vmDom.shutdown()
             else:
                 raise Exception(f"Invalid stage action: {action}")
 

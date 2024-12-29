@@ -61,7 +61,10 @@ definitions:
                 "$ref": "#/definitions/Sleep"
             reboot:
                 type: null
-                description: "Requests the VM to reboot."
+                description: "Requests the VM to reboot. Note the VM can ignore this request."
+            shutdown:
+                type: null
+                description: "Requests the VM to shutdown. Note the VM can ignore this request."
         title: action
     Sleep:
         type: object
