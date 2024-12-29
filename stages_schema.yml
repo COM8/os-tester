@@ -57,10 +57,23 @@ definitions:
                 "$ref": "#/definitions/MouseMove"
             mouse_click:
                 "$ref": "#/definitions/MouseClick"
+            sleep:
+                "$ref": "#/definitions/Sleep"
             reboot:
                 type: null
                 description: "Requests the VM to reboot."
         title: action
+    Sleep:
+        type: object
+        additionalProperties: false
+        properties:
+            duration_s:
+                type: number
+                description: "The time in seconds to sleep before continuing."
+        required:
+            - value
+            - duration_s
+        title: keyboard_key
     KeyboardKey:
         type: object
         additionalProperties: false

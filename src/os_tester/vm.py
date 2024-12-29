@@ -58,6 +58,8 @@ class vm:
                 self.__send_keyboard_key_action(action["keyboard_key"])
             elif "keyboard_text" in action:
                 self.__send_keyboard_text_action(action["keyboard_text"])
+            elif "sleep" in action:
+                sleep(action["sleep"]["duration_s"])
             elif "reboot" in action:
                 assert self.vmDom
                 self.vmDom.reboot()
