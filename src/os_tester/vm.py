@@ -165,7 +165,7 @@ class vm:
             for index, refImg in enumerate(refImgList, start=0):
                 mse, ssimIndex, difImg = self.__comp_images(curImg, refImg)
 
-                same: float = 1 if mse < subPathObj.checkMseLeq and ssimIndex > subPathObj.checkSsimGeq else 0
+                same: float = 1 if mse <= subPathObj.checkMseLeq and ssimIndex >= subPathObj.checkSsimGeq else 0
                 print(f"MSE: {mse}, SSIM: {ssimIndex}, Images Same: {same}")
                 if self.debugPlt:
                     self.debugPlotObj.update_plot(refImg, curImg, difImg, mse, ssimIndex, same)
