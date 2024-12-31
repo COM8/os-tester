@@ -294,15 +294,13 @@ class vm:
         stream: libvirt.virStream = self.conn.newStream()
 
         assert self.vmDom
-        imgType: Any = self.vmDom.screenshot(stream, 0)
+        _ = self.vmDom.screenshot(stream, 0)
 
         with open(targetPath, "wb") as f:
             streamBytes = stream.recv(262120)
             while streamBytes != b"":
                 f.write(streamBytes)
                 streamBytes = stream.recv(262120)
-
-        print(f"Screenshot saved as type '{imgType}' under '{targetPath}'.")
         stream.finish()
 
     def __get_screen_size(self) -> Tuple[int, int]:
