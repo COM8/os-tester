@@ -139,7 +139,9 @@ class vm:
         """
         timeoutInS = stageObj.timeoutS
         start = time()
-        refImgList = list()
+
+        # Check if the reference images exist and if so load them as OpenCV object
+        refImgList: List[cv2.typing.MatLike] = list()
         for subPathObj in stageObj.pathsList:
             refImgPath: str = subPathObj.checkFile
             if not path.exists(refImgPath):
@@ -151,29 +153,37 @@ class vm:
                 sys.exit(3)
 
             refImgList.append(cv2.imread(refImgPath))
+
         while True:
+            # Take a new screenshot
             curImgPath: str = f"/tmp/{self.uuid}_check.png"
             self.take_screenshot(curImgPath)
-            print("ScreenShoot taken.")
             curImg: cv2.typing.MatLike = cv2.imread(curImgPath)
 
             mse: float
             ssimIndex: float
             difImg: cv2.typing.MatLike
+            refImg: cv2.typing.MatLike
 
+            # Compare the screenshot with all reference images
             resultIndex: int = -1
-            for index, refImg in enumerate(refImgList, start=0):
+            index: int = 0
+            for subPathObj in stageObj.pathsList:
+                # Compare images by calculating similarity
+                refImg = refImgList[index]
                 mse, ssimIndex, difImg = self.__comp_images(curImg, refImg)
-
                 same: float = 1 if mse <= subPathObj.checkMseLeq and ssimIndex >= subPathObj.checkSsimGeq else 0
-                print(f"MSE: {mse}, SSIM: {ssimIndex}, Images Same: {same}")
+
+                print(f"{refImgPath} with MSE leq {subPathObj.checkMseLeq} and SSIM geq {subPathObj.checkSsimGeq} - MSE: {mse}, SSIM: {ssimIndex}, Images Same: {same}")
                 if self.debugPlt:
                     self.debugPlotObj.update_plot(refImg, curImg, difImg, mse, ssimIndex, same)
 
-                # break if a image was found
+                # Break if we found a matching image
                 if same >= 1:
                     resultIndex = index
                     break
+
+                index += 1
 
             if resultIndex != -1:
                 print(f"path number: {index}")
@@ -181,7 +191,7 @@ class vm:
 
             # if timeout is exited
             if start + timeoutInS < time():
-                print(f"Tiemout for stage '{stageObj.name}' reached after {timeoutInS} seconds.")
+                print(f"Timeout for stage '{stageObj.name}' reached after {timeoutInS} seconds.")
                 sys.exit(5)
 
             sleep(0.25)
