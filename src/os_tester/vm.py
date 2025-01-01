@@ -174,7 +174,7 @@ class vm:
                 mse, ssimIndex, difImg = self.__comp_images(curImg, refImg)
                 same: float = 1 if mse <= subPathObj.checkMseLeq and ssimIndex >= subPathObj.checkSsimGeq else 0
 
-                print(f"{refImgPath} with MSE leq {subPathObj.checkMseLeq} and SSIM geq {subPathObj.checkSsimGeq} - MSE: {mse}, SSIM: {ssimIndex}, Images Same: {same}")
+                print(f"{subPathObj.checkFile} with MSE leq {subPathObj.checkMseLeq} and SSIM geq {subPathObj.checkSsimGeq} - MSE: {mse}, SSIM: {ssimIndex}, Images Same: {same}")
                 if self.debugPlt:
                     self.debugPlotObj.update_plot(refImg, curImg, difImg, mse, ssimIndex, same)
 
