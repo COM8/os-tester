@@ -132,7 +132,7 @@ if __name__ == "__main__":
     basePath: str = "stages"
     stagesObj: stages = stages(basePath)
     print(stagesObj)
-    
+
     vmObj.run_stages(stagesObj)
 
     print("All stages done. Exiting...")
@@ -149,10 +149,11 @@ stages:
     timeout_s: 15
     paths:
       - path:
-          check:
-            file: 0.png
-            mse_leq: 0.1
-            ssim_geq: 0.99
+          checks:
+            - file:
+              path: 0.png
+              mse_leq: 0.1
+              ssim_geq: 0.99
           actions:
             - keyboard_key:
                 value: up
@@ -162,10 +163,11 @@ stages:
                 duration_s: 0.25
           nextStage: Installation Started
       - path:
-          check:
-            file: 0_1.png
-            mse_leq: 0.1
-            ssim_geq: 0.99
+          checks:
+            - file:
+              path: 0_1.png
+              mse_leq: 0.1
+              ssim_geq: 0.99
           actions:
             - keyboard_key:
                 value: up
@@ -182,10 +184,11 @@ stages:
     timeout_s: 600
     paths:
       - path:
-          check:
-            file: 1.png
-            mse_leq: 0.1
-            ssim_geq: 0.99
+          checks:
+            - file:
+              path: 1.png
+              mse_leq: 0.1
+              ssim_geq: 0.99
           actions:
             - keyboard_key:
                 value: up
@@ -196,10 +199,11 @@ stages:
     timeout_s: 600
     paths:
       - path:
-          check:
-            file: 2.png
-            mse_leq: 0.1
-            ssim_geq: 0.99
+          checks:
+            - file:
+              path: 2.png
+              mse_leq: 0.1
+              ssim_geq: 0.99
           actions:
             - keyboard_key:
                 value: tab
@@ -216,10 +220,11 @@ stages:
     timeout_s: 600
     paths:
       - path:
-          check:
-            file: 3.png
-            mse_leq: 0.1
-            ssim_geq: 0.99
+          checks:
+            - file:
+              path: 3.png
+              mse_leq: 0.1
+              ssim_geq: 0.99
           actions:
             - keyboard_text:
                 value: something

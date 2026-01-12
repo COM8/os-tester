@@ -31,9 +31,10 @@ definitions:
         type: object
         additionalProperties: false
         properties:
-            check:
-                type: object
-                "$ref": "#/definitions/Check"
+            checks:
+                type: array
+                items:
+                    "$ref": "#/definitions/File"
             actions:
                 type: array
                 items:
@@ -41,7 +42,7 @@ definitions:
             nextStage:
                 type: string
         required:
-            - check
+            - checks
             - actions
             - nextStage
         title: path
@@ -130,11 +131,11 @@ definitions:
             - value
             - duration_s
         title: mouse_click
-    Check:
+    File:
         type: object
         additionalProperties: false
         properties:
-            file:
+            path:
                 type: string
             mse_leq:
                 type: number
@@ -144,4 +145,4 @@ definitions:
             - file
             - mse_leq
             - ssim_geq
-        title: check
+        title: file

@@ -140,58 +140,48 @@ class vm:
         timeoutInS = stageObj.timeoutS
         start = time()
 
-        # Check if the reference images exist and if so load them as OpenCV object
-        refImgList: List[cv2.typing.MatLike] = list()
-        for subPathObj in stageObj.pathsList:
-            refImgPath: str = subPathObj.checkFile
-            if not path.exists(refImgPath):
-                print(f"Stage ref image file '{refImgPath}' not found!")
-                sys.exit(2)
-
-            if not path.isfile(refImgPath):
-                print(f"Stage ref image file '{refImgPath}' is no file!")
-                sys.exit(3)
-
-            refImgList.append(cv2.imread(refImgPath))
-
         while True:
             # Take a new screenshot
             curImgPath: str = f"/tmp/{self.uuid}_check.png"
             self.take_screenshot(curImgPath)
-            curImg: cv2.typing.MatLike = cv2.imread(curImgPath)
+            curImgOpt: cv2.typing.MatLike | None = cv2.imread(curImgPath)
+            if curImgOpt is None:
+                print("Failed to convert current image to CV2 object")
+                sys.exit(6)
+            curImg: cv2.typing.MatLike = curImgOpt
 
             mse: float
             ssimIndex: float
             difImg: cv2.typing.MatLike
-            refImg: cv2.typing.MatLike
+
+            pathIndex: int = 1
 
             # Compare the screenshot with all reference images
-            resultIndex: int = -1
-            index: int = 0
             for subPathObj in stageObj.pathsList:
-                # Compare images by calculating similarity
-                refImg = refImgList[index]
-                mse, ssimIndex, difImg = self.__comp_images(curImg, refImg)
-                same: float = 1 if mse <= subPathObj.checkMseLeq and ssimIndex >= subPathObj.checkSsimGeq else 0
+                # If there are no checks. We consider is asd a successful check
+                if not subPathObj.checkList:
+                    return subPathObj
 
-                print(f"{subPathObj.checkFile} with MSE leq {subPathObj.checkMseLeq} and SSIM geq {subPathObj.checkSsimGeq} - MSE: {mse}, SSIM: {ssimIndex}, Images Same: {same}")
-                if self.debugPlt:
-                    self.debugPlotObj.update_plot(refImg, curImg, difImg, mse, ssimIndex, same)
+                print(f"Checking path {pathIndex}...")
+                for check in subPathObj.checkList:
+                    # Compare images by calculating similarity
+                    mse, ssimIndex, difImg = self.__comp_images(curImg, check.fileData)
+                    same: float = 1 if mse <= check.mseLeq and ssimIndex >= check.ssimGeq else 0
 
-                # Break if we found a matching image
-                if same >= 1:
-                    resultIndex = index
-                    break
+                    if self.debugPlt:
+                        self.debugPlotObj.update_plot(check.fileData, curImg, difImg, mse, ssimIndex, same)
 
-                index += 1
+                    # Break if we found a matching image
+                    if same >= 1:
+                        print(f"\t✅ [{path.basename(check.filePath)}]: MSE expected leq {check.mseLeq}, SSIM expected geq {check.ssimGeq} - MSE actual: {mse}, SSIM actual: {ssimIndex}, Images same: {same}")
+                        return subPathObj
+                    print(f"\t❌ [{path.basename(check.filePath)}]: MSE expected leq {check.mseLeq}, SSIM expected geq {check.ssimGeq} - MSE actual: {mse}, SSIM actual: {ssimIndex}, Images same: {same}")
 
-            if resultIndex != -1:
-                print(f"path number: {index}")
-                return stageObj.pathsList[resultIndex]
+                pathIndex += 1
 
             # if timeout is exited
             if start + timeoutInS < time():
-                print(f"Timeout for stage '{stageObj.name}' reached after {timeoutInS} seconds.")
+                print(f"⌛ Timeout for stage '{stageObj.name}' reached after {timeoutInS} seconds.")
                 sys.exit(5)
 
             sleep(0.25)
@@ -313,7 +303,10 @@ class vm:
         filePath: str = f"/tmp/{self.uuid}_screen_size.png"
         self.take_screenshot(filePath)
 
-        img: cv2.typing.MatLike = cv2.imread(filePath)
+        img: cv2.typing.MatLike | None = cv2.imread(filePath)
+
+        if not img:
+            return (0, 0)
 
         # Delete screen shoot again since we do not need it any more
         remove(filePath)
