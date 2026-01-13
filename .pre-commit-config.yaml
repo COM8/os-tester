@@ -59,6 +59,11 @@ repos:
         exclude: test
   - repo: local
     hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest -q
+        language: system
+        pass_filenames: false
       - id: pylint
         name: pylint
         entry: pylint

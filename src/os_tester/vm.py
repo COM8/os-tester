@@ -88,14 +88,14 @@ class vm:
         Returns:
             Tuple[float, cv2.typing.MatLike]: A tuple of the mean square error and the image diff.
         """
-        # Compute the difference
-        imgDif: cv2.typing.MatLike = cv2.subtract(curImg, refImg)
-        err = np.sum(imgDif**2)
-
-        # Compute Mean Squared Error
-        h, w = curImg.shape[:2]
-        mse = err / (float(h * w))
-
+        # Use absdiff on float to avoid uint8 saturation masking differences.
+        imgDif: cv2.typing.MatLike = cv2.absdiff(
+            curImg.astype(np.float32),
+            refImg.astype(np.float32),
+        )
+        # Compute Mean Squared Error across all channels.
+        imgDifArr = np.asarray(imgDif, dtype=np.float32)
+        mse = float(np.mean(imgDifArr**2))
         mse = min(
             mse,
             10,
@@ -121,17 +121,46 @@ class vm:
         # Get the dimensions of the original image
         hRef, wRef = refImg.shape[:2]
 
+        # Get the dimensions of the current image
+        hCur, wCur = curImg.shape[:2]
+
         # Resize the reference image to match the original image's dimensions
-        curImgResized = cv2.resize(curImg, (wRef, hRef))
+        if (hRef != hCur) or (wRef != wCur):
+            curImgResized = cv2.resize(curImg, (wRef, hRef))
+        else:
+            curImgResized = curImg
 
         mse: float
         difImg: cv2.typing.MatLike
-        mse, difImg = self.__img_mse(curImgResized, refImg)
 
-        # Compute SSIM
-        ssimIndex: float = skimage_metrics.structural_similarity(curImgResized, refImg, channel_axis=-1)
+        # Clip to a known range to keep SSIM stable when using float inputs.
+        curImgResizedFloat = np.clip(curImgResized.astype(np.float32), 0, 255)
+        refImgFloat = np.clip(refImg.astype(np.float32), 0, 255)
 
-        return (mse, ssimIndex, difImg)
+        mse, difImg = self.__img_mse(curImgResizedFloat, refImgFloat)
+
+        if mse == 0.0:
+            # Identical pixels should yield SSIM=1; short-circuit to avoid inconsistent results.
+            return (mse, 1.0, difImg)
+
+        ssimIndex = skimage_metrics.structural_similarity(
+            curImgResizedFloat,
+            refImgFloat,
+            channel_axis=-1,
+            data_range=255,
+        )
+        if not np.isfinite(ssimIndex) or (ssimIndex < -1.0) or (ssimIndex > 1.0):
+            # Fallback to uint8 range when float inputs yield invalid SSIM.
+            curImgUInt8 = np.clip(curImgResizedFloat, 0, 255).astype(np.uint8)
+            refImgUInt8 = np.clip(refImgFloat, 0, 255).astype(np.uint8)
+            ssimIndex = skimage_metrics.structural_similarity(
+                curImgUInt8,
+                refImgUInt8,
+                channel_axis=-1,
+                data_range=255,
+            )
+
+        return (mse, max(ssimIndex, 0.0), difImg)
 
     def __wait_for_stage_done(self, stageObj: stage) -> subPath:
         """

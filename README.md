@@ -245,6 +245,12 @@ python3 -m build
 ```
 The output is then available inside the `dist/` directory.
 
+## Install Locally
+
+```bash
+python3 -m pip install --force-reinstall --no-deps dist/*.whl
+```
+
 ## Upload
 ```bash
 twine upload dist/*
@@ -262,4 +268,23 @@ pre-commit install
 To run `pre-commit` manually run:
 ```bash
 pre-commit run --all-files
+```
+
+## Testing
+To run the unit tests locally:
+```bash
+# System deps (needed to build libvirt-python)
+dnf install libvirt-devel pkgconf-pkg-config
+
+# Python deps
+python3 -m pip install -r requirements.txt
+python3 -m pip install pytest
+
+# Run tests
+pytest -q
+```
+
+On Debian/Ubuntu, replace the system deps line with:
+```bash
+sudo apt-get install libvirt-dev pkg-config
 ```
