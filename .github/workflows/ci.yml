@@ -1,19 +1,26 @@
-name: ci
+name: CI
+
 on: [push, workflow_dispatch, pull_request]
 
 jobs:
-  lint:
+  tests:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6.0.1
-    - uses: actions/setup-python@v6.1.0
-    - name: Install system dependencies
-      run: |
-        sudo apt update -y
-        sudo apt install -y python3-libvirt libvirt-dev libvirt-clients qemu-system-x86 libvirt-daemon libvirt-daemon-system
-    - name: Install python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pylint
-        pip install -r requirements.txt
-    - uses: pre-commit/action@v3.0.1
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+      - name: Set up Python
+        uses: actions/setup-python@v6.1.0
+        with:
+          python-version: "3.14"
+          cache: "pip"
+      - name: Install system dependencies
+        run: |
+          sudo apt update -y
+          sudo apt install -y python3-libvirt libvirt-dev pkg-config libvirt-clients qemu-system-x86 libvirt-daemon libvirt-daemon-system
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pytest
+      - name: Run tests
+        run: pytest -q

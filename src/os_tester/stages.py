@@ -2,25 +2,71 @@ import sys
 from os import path
 from typing import Any, Dict, List
 
+import cv2
 import yaml  # type: ignore
+
+
+class checkFile:
+    """
+    A single reference file with thresholds.
+    """
+
+    filePath: str
+    fileData: cv2.typing.MatLike
+
+    mseLeq: float
+    ssimGeq: float
+    nextStage: str
+    actions: List[Dict[str, Any]]
+
+    def __init__(self, fileDict: Dict[str, Any], basePath: str):
+        self.filePath = path.join(basePath, fileDict["path"])
+        # Check if the reference images exist and if so load them as OpenCV object
+        self.fileData = self.__load(self.filePath)
+        self.mseLeq = fileDict["mse_leq"]
+        self.ssimGeq = fileDict["ssim_geq"]
+
+    def __load(self, filePath: str) -> cv2.typing.MatLike:
+        """
+        Check if the reference image exist and if so load/return it as OpenCV object.
+        """
+
+        if not path.exists(filePath):
+            print(f"Stage ref image file '{filePath}' not found!")
+            sys.exit(2)
+
+        if not path.isfile(filePath):
+            print(f"Stage ref image file '{filePath}' is no file!")
+            sys.exit(3)
+
+        data: cv2.typing.MatLike | None = cv2.imread(filePath)
+        if data is None:
+            print(f"Failed to load CV2 data from '{filePath}'!")
+            sys.exit(4)
+        return data
 
 
 class subPath:
     """
-    A single path with reference image, thresholds and actions to perform once the threshold is reached.
+    A single path with optionally multiple ref images, thresholds and actions to perform once the threshold for one file (image) is reached.
     """
 
-    checkFile: str
+    checkList: List[checkFile]
 
-    checkMseLeq: float
-    checkSsimGeq: float
     nextStage: str
     actions: List[Dict[str, Any]]
 
     def __init__(self, pathDict: Dict[str, Any], basePath: str):
-        self.checkFile = path.join(basePath, pathDict["check"]["file"])
-        self.checkMseLeq = pathDict["check"]["mse_leq"]
-        self.checkSsimGeq = pathDict["check"]["ssim_geq"]
+        # Removed in 1.1.0
+        if "check" in pathDict:
+            raise Exception("The keyword 'check' has been replaced with the 'checks' keyword.")
+
+        self.checkList = list()
+        if "checks" in pathDict:
+            checkDict: Dict[str, Any]
+            for checkDict in pathDict["checks"]:
+                self.checkList.append(checkFile(checkDict, basePath))
+
         self.actions = pathDict["actions"] if "actions" in pathDict else list()
         self.nextStage = pathDict["nextStage"]
 

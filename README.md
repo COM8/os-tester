@@ -132,7 +132,7 @@ if __name__ == "__main__":
     basePath: str = "stages"
     stagesObj: stages = stages(basePath)
     print(stagesObj)
-    
+
     vmObj.run_stages(stagesObj)
 
     print("All stages done. Exiting...")
@@ -149,10 +149,11 @@ stages:
     timeout_s: 15
     paths:
       - path:
-          check:
-            file: 0.png
-            mse_leq: 0.1
-            ssim_geq: 0.99
+          checks:
+            - file:
+              path: 0.png
+              mse_leq: 0.1
+              ssim_geq: 0.99
           actions:
             - keyboard_key:
                 value: up
@@ -162,10 +163,11 @@ stages:
                 duration_s: 0.25
           nextStage: Installation Started
       - path:
-          check:
-            file: 0_1.png
-            mse_leq: 0.1
-            ssim_geq: 0.99
+          checks:
+            - file:
+              path: 0_1.png
+              mse_leq: 0.1
+              ssim_geq: 0.99
           actions:
             - keyboard_key:
                 value: up
@@ -182,10 +184,11 @@ stages:
     timeout_s: 600
     paths:
       - path:
-          check:
-            file: 1.png
-            mse_leq: 0.1
-            ssim_geq: 0.99
+          checks:
+            - file:
+              path: 1.png
+              mse_leq: 0.1
+              ssim_geq: 0.99
           actions:
             - keyboard_key:
                 value: up
@@ -196,10 +199,11 @@ stages:
     timeout_s: 600
     paths:
       - path:
-          check:
-            file: 2.png
-            mse_leq: 0.1
-            ssim_geq: 0.99
+          checks:
+            - file:
+              path: 2.png
+              mse_leq: 0.1
+              ssim_geq: 0.99
           actions:
             - keyboard_key:
                 value: tab
@@ -216,10 +220,11 @@ stages:
     timeout_s: 600
     paths:
       - path:
-          check:
-            file: 3.png
-            mse_leq: 0.1
-            ssim_geq: 0.99
+          checks:
+            - file:
+              path: 3.png
+              mse_leq: 0.1
+              ssim_geq: 0.99
           actions:
             - keyboard_text:
                 value: something
@@ -240,6 +245,12 @@ python3 -m build
 ```
 The output is then available inside the `dist/` directory.
 
+## Install Locally
+
+```bash
+python3 -m pip install --force-reinstall --no-deps dist/*.whl
+```
+
 ## Upload
 ```bash
 twine upload dist/*
@@ -257,4 +268,23 @@ pre-commit install
 To run `pre-commit` manually run:
 ```bash
 pre-commit run --all-files
+```
+
+## Testing
+To run the unit tests locally:
+```bash
+# System deps (needed to build libvirt-python)
+dnf install libvirt-devel pkgconf-pkg-config
+
+# Python deps
+python3 -m pip install -r requirements.txt
+python3 -m pip install pytest
+
+# Run tests
+pytest -q
+```
+
+On Debian/Ubuntu, replace the system deps line with:
+```bash
+sudo apt-get install libvirt-dev pkg-config
 ```
