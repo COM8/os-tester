@@ -59,11 +59,14 @@ class vm:
             elif "keyboard_text" in action:
                 self.__send_keyboard_text_action(action["keyboard_text"])
             elif "sleep" in action:
+                print(f"Sleeping for {action["duration_s"]} seconds...")
                 sleep(action["duration_s"])
             elif "reboot" in action:
+                print("Rebooting VM...")
                 assert self.vmDom
                 self.vmDom.reboot()
             elif "shutdown" in action:
+                print("Shutting Down VM...")
                 assert self.vmDom
                 self.vmDom.shutdown()
             else:
