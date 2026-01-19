@@ -21,7 +21,7 @@ def _load_image(file_path: str) -> np.ndarray:
 
 def _compare_images(img_a: np.ndarray, img_b: np.ndarray) -> tuple[float, float]:
     tester = vm(None, "pytest")
-    mse, ssim, _ = tester.comp_images(img_a, img_b)
+    mse, ssim, _ = tester._vm__comp_images(img_a, img_b)
     return mse, ssim
 
 

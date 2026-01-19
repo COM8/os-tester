@@ -2,6 +2,7 @@ import json
 import sys
 from contextlib import suppress
 from os import path, remove
+from shutil import copy2
 from time import sleep, time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -26,13 +27,9 @@ class vm:
 
     vmDom: Optional[libvirt.virDomain]
     debugPlotObj: debugPlot
+    matchedImageIndex: int
 
-    def __init__(
-        self,
-        conn: libvirt.virConnect,
-        uuid: str,
-        debugPlt: bool = False,
-    ):
+    def __init__(self, conn: libvirt.virConnect, uuid: str, debugPlt: bool = False):
         self.conn = conn
         self.uuid = uuid
         self.debugPlt = debugPlt
@@ -40,6 +37,7 @@ class vm:
             self.debugPlotObj = debugPlot()
 
         self.vmDom = None
+        self.matchedImageIndex = 0
 
     def __perform_stage_actions(self, actions: List[Dict[str, Any]]) -> None:
         """
@@ -98,7 +96,7 @@ class vm:
         mse = float(np.mean(imgDifArr**2))
         return mse, imgDif
 
-    def comp_images(
+    def __comp_images(
         self,
         curImg: cv2.typing.MatLike,
         refImg: cv2.typing.MatLike,
@@ -141,6 +139,17 @@ class vm:
         # ssimIndex = np.clip(a=ssimIndex, a_min=0.0, a_max=1.0)
         return (mse, ssimIndex, difImg)
 
+    def __save_matched_image(self, srcPath: str) -> None:
+        """
+        Copies the given image and stores it under '/tmp/matched_{self.uuid}_{self.matchedImageIndex}.png'.
+        Increments 'self.matchedImageIndex' by one.
+
+        Args:
+            srcPath (str): The source path to the image.
+        """
+        copy2(srcPath, f"/tmp/matched_{self.uuid}_{self.matchedImageIndex}.png")
+        self.matchedImageIndex += 1
+
     def __wait_for_stage_done(self, stageObj: stage) -> subPath:
         """
         Returns once the given stages reference image is reached.
@@ -176,7 +185,7 @@ class vm:
                 print(f"Checking path {pathIndex}...")
                 for check in subPathObj.checkList:
                     # Compare images by calculating similarity
-                    mse, ssimIndex, difImg = self.comp_images(curImg, check.fileData)
+                    mse, ssimIndex, difImg = self.__comp_images(curImg, check.fileData)
                     same: float = 1 if mse <= check.mseLeq and ssimIndex >= check.ssimGeq else 0
 
                     if self.debugPlt:
@@ -185,6 +194,7 @@ class vm:
                     # Break if we found a matching image
                     if same >= 1:
                         print(f"\t✅ [{path.basename(check.filePath)}]: MSE expected leq {check.mseLeq}, SSIM expected geq {check.ssimGeq} - MSE actual: {mse}, SSIM actual: {ssimIndex}, Images same: {same}")
+                        self.__save_matched_image(curImgPath)
                         return subPathObj
                     print(f"\t❌ [{path.basename(check.filePath)}]: MSE expected leq {check.mseLeq}, SSIM expected geq {check.ssimGeq} - MSE actual: {mse}, SSIM actual: {ssimIndex}, Images same: {same}")
 
