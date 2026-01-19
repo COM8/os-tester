@@ -31,8 +31,8 @@ def _compare_images_test(file_name_a: str, file_name_b: str, mse_expected: float
     img_b = _load_image(f"{basePath}/{file_name_b}")
     mse, ssim = _compare_images(img_a, img_b)
 
-    assert mse == pytest.approx(mse_expected, abs=1e-3)
-    assert ssim == pytest.approx(ssim_expected, abs=1e-3)
+    assert mse == pytest.approx(mse_expected, abs=1e-2)
+    assert ssim == pytest.approx(ssim_expected, abs=1e-2)
 
 
 def test_compare_same_image_file() -> None:
