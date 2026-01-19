@@ -96,13 +96,9 @@ class vm:
         # Compute Mean Squared Error across all channels.
         imgDifArr = np.asarray(imgDif, dtype=np.float32)
         mse = float(np.mean(imgDifArr**2))
-        mse = min(
-            mse,
-            10,
-        )  # Values over 10 do not make sense for our case and it makes it easier to plot it
         return mse, imgDif
 
-    def __comp_images(
+    def comp_images(
         self,
         curImg: cv2.typing.MatLike,
         refImg: cv2.typing.MatLike,
@@ -133,34 +129,17 @@ class vm:
         mse: float
         difImg: cv2.typing.MatLike
 
-        # Clip to a known range to keep SSIM stable when using float inputs.
-        curImgResizedFloat = np.clip(curImgResized.astype(np.float32), 0, 255)
-        refImgFloat = np.clip(refImg.astype(np.float32), 0, 255)
-
-        mse, difImg = self.__img_mse(curImgResizedFloat, refImgFloat)
+        mse, difImg = self.__img_mse(refImg, curImgResized)
 
         if mse == 0.0:
             # Identical pixels should yield SSIM=1; short-circuit to avoid inconsistent results.
             return (mse, 1.0, difImg)
 
-        ssimIndex = skimage_metrics.structural_similarity(
-            curImgResizedFloat,
-            refImgFloat,
-            channel_axis=-1,
-            data_range=255,
-        )
-        if not np.isfinite(ssimIndex) or (ssimIndex < -1.0) or (ssimIndex > 1.0):
-            # Fallback to uint8 range when float inputs yield invalid SSIM.
-            curImgUInt8 = np.clip(curImgResizedFloat, 0, 255).astype(np.uint8)
-            refImgUInt8 = np.clip(refImgFloat, 0, 255).astype(np.uint8)
-            ssimIndex = skimage_metrics.structural_similarity(
-                curImgUInt8,
-                refImgUInt8,
-                channel_axis=-1,
-                data_range=255,
-            )
+        ssimIndex: float = skimage_metrics.structural_similarity(refImg, curImgResized, channel_axis=-1)
+        ssimIndex = min(1.0, max(1.0, ssimIndex))
 
-        return (mse, max(ssimIndex, 0.0), difImg)
+        # ssimIndex = np.clip(a=ssimIndex, a_min=0.0, a_max=1.0)
+        return (mse, ssimIndex, difImg)
 
     def __wait_for_stage_done(self, stageObj: stage) -> subPath:
         """
@@ -197,7 +176,7 @@ class vm:
                 print(f"Checking path {pathIndex}...")
                 for check in subPathObj.checkList:
                     # Compare images by calculating similarity
-                    mse, ssimIndex, difImg = self.__comp_images(curImg, check.fileData)
+                    mse, ssimIndex, difImg = self.comp_images(curImg, check.fileData)
                     same: float = 1 if mse <= check.mseLeq and ssimIndex >= check.ssimGeq else 0
 
                     if self.debugPlt:
