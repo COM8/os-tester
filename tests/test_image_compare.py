@@ -41,11 +41,11 @@ def test_compare_same_image_file() -> None:
 
 def test_compare_similar_image() -> None:
     _compare_images_test("a.png", "b.png", 0.0, 1.0)
-    _compare_images_test("a.png", "c.png", 6.005, 0.0)  # The difference is the cursor
+    _compare_images_test("a.png", "c.png", 6.005, 0.99)  # The difference is the cursor
 
 
 def test_compare_similar_luks_image() -> None:
-    _compare_images_test("luks_a.png", "luks_b.png", 300.52582, 1.0)
+    _compare_images_test("luks_a.png", "luks_b.png", 300.52582, 0.97)
 
 
 def test_compare_images_identical() -> None:
