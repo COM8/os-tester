@@ -136,7 +136,7 @@ class vm:
             return (mse, 1.0, difImg)
 
         ssimIndex: float = skimage_metrics.structural_similarity(refImg, curImgResized, channel_axis=-1)
-        ssimIndex = min(1.0, max(1.0, ssimIndex))
+        ssimIndex = min(1.0, max(0.0, ssimIndex))
 
         # ssimIndex = np.clip(a=ssimIndex, a_min=0.0, a_max=1.0)
         return (mse, ssimIndex, difImg)
