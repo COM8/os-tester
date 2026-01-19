@@ -162,7 +162,7 @@ class vm:
 
         while True:
             # Take a new screenshot
-            curImgPath: str = f"/tmp/{self.uuid}_check.png"
+            curImgPath: str = f"/tmp/check_{self.uuid}.png"
             self.take_screenshot(curImgPath)
             curImgOpt: cv2.typing.MatLike | None = cv2.imread(curImgPath)
             if curImgOpt is None:
