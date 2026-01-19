@@ -2,6 +2,7 @@ import json
 import sys
 from contextlib import suppress
 from os import path, remove
+from shutil import copy2
 from time import sleep, time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -26,13 +27,9 @@ class vm:
 
     vmDom: Optional[libvirt.virDomain]
     debugPlotObj: debugPlot
+    matchedImageIndex: int
 
-    def __init__(
-        self,
-        conn: libvirt.virConnect,
-        uuid: str,
-        debugPlt: bool = False,
-    ):
+    def __init__(self, conn: libvirt.virConnect, uuid: str, debugPlt: bool = False):
         self.conn = conn
         self.uuid = uuid
         self.debugPlt = debugPlt
@@ -40,6 +37,7 @@ class vm:
             self.debugPlotObj = debugPlot()
 
         self.vmDom = None
+        self.matchedImageIndex = 0
 
     def __perform_stage_actions(self, actions: List[Dict[str, Any]]) -> None:
         """
@@ -59,11 +57,14 @@ class vm:
             elif "keyboard_text" in action:
                 self.__send_keyboard_text_action(action["keyboard_text"])
             elif "sleep" in action:
+                print(f"Sleeping for {action["duration_s"]} seconds...")
                 sleep(action["duration_s"])
             elif "reboot" in action:
+                print("Rebooting VM...")
                 assert self.vmDom
                 self.vmDom.reboot()
             elif "shutdown" in action:
+                print("Shutting Down VM...")
                 assert self.vmDom
                 self.vmDom.shutdown()
             else:
@@ -85,18 +86,14 @@ class vm:
         Returns:
             Tuple[float, cv2.typing.MatLike]: A tuple of the mean square error and the image diff.
         """
-        # Compute the difference
-        imgDif: cv2.typing.MatLike = cv2.subtract(curImg, refImg)
-        err = np.sum(imgDif**2)
-
-        # Compute Mean Squared Error
-        h, w = curImg.shape[:2]
-        mse = err / (float(h * w))
-
-        mse = min(
-            mse,
-            10,
-        )  # Values over 10 do not make sense for our case and it makes it easier to plot it
+        # Use absdiff on float to avoid uint8 saturation masking differences.
+        imgDif: cv2.typing.MatLike = cv2.absdiff(
+            curImg.astype(np.float32),
+            refImg.astype(np.float32),
+        )
+        # Compute Mean Squared Error across all channels.
+        imgDifArr = np.asarray(imgDif, dtype=np.float32)
+        mse = float(np.mean(imgDifArr**2))
         return mse, imgDif
 
     def __comp_images(
@@ -118,17 +115,40 @@ class vm:
         # Get the dimensions of the original image
         hRef, wRef = refImg.shape[:2]
 
+        # Get the dimensions of the current image
+        hCur, wCur = curImg.shape[:2]
+
         # Resize the reference image to match the original image's dimensions
-        curImgResized = cv2.resize(curImg, (wRef, hRef))
+        if (hRef != hCur) or (wRef != wCur):
+            curImgResized = cv2.resize(curImg, (wRef, hRef))
+        else:
+            curImgResized = curImg
 
         mse: float
         difImg: cv2.typing.MatLike
-        mse, difImg = self.__img_mse(curImgResized, refImg)
 
-        # Compute SSIM
-        ssimIndex: float = skimage_metrics.structural_similarity(curImgResized, refImg, channel_axis=-1)
+        mse, difImg = self.__img_mse(refImg, curImgResized)
 
+        if mse == 0.0:
+            # Identical pixels should yield SSIM=1; short-circuit to avoid inconsistent results.
+            return (mse, 1.0, difImg)
+
+        ssimIndex: float = skimage_metrics.structural_similarity(refImg, curImgResized, channel_axis=-1)
+        ssimIndex = min(1.0, max(0.0, ssimIndex))
+
+        # ssimIndex = np.clip(a=ssimIndex, a_min=0.0, a_max=1.0)
         return (mse, ssimIndex, difImg)
+
+    def __save_matched_image(self, srcPath: str) -> None:
+        """
+        Copies the given image and stores it under '/tmp/matched_{self.uuid}_{self.matchedImageIndex}.png'.
+        Increments 'self.matchedImageIndex' by one.
+
+        Args:
+            srcPath (str): The source path to the image.
+        """
+        copy2(srcPath, f"/tmp/matched_{self.uuid}_{self.matchedImageIndex}.png")
+        self.matchedImageIndex += 1
 
     def __wait_for_stage_done(self, stageObj: stage) -> subPath:
         """
@@ -140,58 +160,49 @@ class vm:
         timeoutInS = stageObj.timeoutS
         start = time()
 
-        # Check if the reference images exist and if so load them as OpenCV object
-        refImgList: List[cv2.typing.MatLike] = list()
-        for subPathObj in stageObj.pathsList:
-            refImgPath: str = subPathObj.checkFile
-            if not path.exists(refImgPath):
-                print(f"Stage ref image file '{refImgPath}' not found!")
-                sys.exit(2)
-
-            if not path.isfile(refImgPath):
-                print(f"Stage ref image file '{refImgPath}' is no file!")
-                sys.exit(3)
-
-            refImgList.append(cv2.imread(refImgPath))
-
         while True:
             # Take a new screenshot
-            curImgPath: str = f"/tmp/{self.uuid}_check.png"
+            curImgPath: str = f"/tmp/check_{self.uuid}.png"
             self.take_screenshot(curImgPath)
-            curImg: cv2.typing.MatLike = cv2.imread(curImgPath)
+            curImgOpt: cv2.typing.MatLike | None = cv2.imread(curImgPath)
+            if curImgOpt is None:
+                print("Failed to convert current image to CV2 object")
+                sys.exit(6)
+            curImg: cv2.typing.MatLike = curImgOpt
 
             mse: float
             ssimIndex: float
             difImg: cv2.typing.MatLike
-            refImg: cv2.typing.MatLike
+
+            pathIndex: int = 1
 
             # Compare the screenshot with all reference images
-            resultIndex: int = -1
-            index: int = 0
             for subPathObj in stageObj.pathsList:
-                # Compare images by calculating similarity
-                refImg = refImgList[index]
-                mse, ssimIndex, difImg = self.__comp_images(curImg, refImg)
-                same: float = 1 if mse <= subPathObj.checkMseLeq and ssimIndex >= subPathObj.checkSsimGeq else 0
+                # If there are no checks. We consider is asd a successful check
+                if not subPathObj.checkList:
+                    return subPathObj
 
-                print(f"{subPathObj.checkFile} with MSE leq {subPathObj.checkMseLeq} and SSIM geq {subPathObj.checkSsimGeq} - MSE: {mse}, SSIM: {ssimIndex}, Images Same: {same}")
-                if self.debugPlt:
-                    self.debugPlotObj.update_plot(refImg, curImg, difImg, mse, ssimIndex, same)
+                print(f"Checking path {pathIndex}...")
+                for check in subPathObj.checkList:
+                    # Compare images by calculating similarity
+                    mse, ssimIndex, difImg = self.__comp_images(curImg, check.fileData)
+                    same: float = 1 if mse <= check.mseLeq and ssimIndex >= check.ssimGeq else 0
 
-                # Break if we found a matching image
-                if same >= 1:
-                    resultIndex = index
-                    break
+                    if self.debugPlt:
+                        self.debugPlotObj.update_plot(check.fileData, curImg, difImg, mse, ssimIndex, same)
 
-                index += 1
+                    # Break if we found a matching image
+                    if same >= 1:
+                        print(f"\t✅ [{path.basename(check.filePath)}]: MSE expected leq {check.mseLeq}, SSIM expected geq {check.ssimGeq} - MSE actual: {mse}, SSIM actual: {ssimIndex}, Images same: {same}")
+                        self.__save_matched_image(curImgPath)
+                        return subPathObj
+                    print(f"\t❌ [{path.basename(check.filePath)}]: MSE expected leq {check.mseLeq}, SSIM expected geq {check.ssimGeq} - MSE actual: {mse}, SSIM actual: {ssimIndex}, Images same: {same}")
 
-            if resultIndex != -1:
-                print(f"path number: {index}")
-                return stageObj.pathsList[resultIndex]
+                pathIndex += 1
 
             # if timeout is exited
             if start + timeoutInS < time():
-                print(f"Timeout for stage '{stageObj.name}' reached after {timeoutInS} seconds.")
+                print(f"⌛ Timeout for stage '{stageObj.name}' reached after {timeoutInS} seconds.")
                 sys.exit(5)
 
             sleep(0.25)
@@ -313,7 +324,10 @@ class vm:
         filePath: str = f"/tmp/{self.uuid}_screen_size.png"
         self.take_screenshot(filePath)
 
-        img: cv2.typing.MatLike = cv2.imread(filePath)
+        img: cv2.typing.MatLike | None = cv2.imread(filePath)
+
+        if not img:
+            return (0, 0)
 
         # Delete screen shoot again since we do not need it any more
         remove(filePath)

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "os-tester"
-version = "1.0.2.dev1"
+version = "1.1.0.dev16"
 authors = [
   { name="Fabian Sauter", email="fabian.sauter+pip@apsensing.com" }
 ]
@@ -24,7 +24,7 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Natural Language :: English"
 ]
-dependencies = ["scikit-image", "opencv-python-headless", "libvirt-python", "PyYAML", "numpy", "matplotlib"]
+dependencies = ["scikit-image == 0.26.0", "opencv-python-headless", "libvirt-python", "PyYAML", "numpy", "matplotlib"]
 
 [project.urls]
 "Homepage" = "https://github.com/AP-Sensing/os-tester"
@@ -65,3 +65,6 @@ line-length = 240
 [tool.isort]
 profile = "black"
 line_length = 240
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
