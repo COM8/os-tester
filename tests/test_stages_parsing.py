@@ -40,7 +40,7 @@ stages:
     imageArea = loaded.stagesList[0].pathsList[0].checkList[0].area
 
     assert isinstance(imageArea, area)
-    assert area.x1Percentage == pytest.approx(0.1)
+    assert imageArea.x1Percentage == pytest.approx(0.1)
 
 
 def test_stages_parsing_rejects_invalid_area(tmp_path) -> None:
@@ -64,7 +64,7 @@ stages:
 """
     _write_stage_file(tmp_path, stage_yaml)
 
-    with pytest.raises(ValueError, match="x1 < x2"):
+    with pytest.raises(ValueError, match="x1Percentage < x2Percentage"):
         stages(str(tmp_path), "stages")
 
 
