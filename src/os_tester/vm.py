@@ -2,7 +2,6 @@ import json
 import sys
 from contextlib import suppress
 from os import path, remove
-from shutil import copy2
 from time import sleep, time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -140,15 +139,57 @@ class vm:
         # ssimIndex = np.clip(a=ssimIndex, a_min=0.0, a_max=1.0)
         return (ssimIndex, diffImg)
 
-    def __save_matched_image(self, srcPath: str) -> None:
+    def __draw_area_outline(self, img: cv2.typing.MatLike, imageArea: area) -> cv2.typing.MatLike:
         """
-        Copies the given image and stores it under '/tmp/matched_{self.uuid}_{self.matchedImageIndex}.png'.
+        Draws a red outline around the selected area on a copy of the provided image.
+        """
+        h, w = img.shape[:2]
+        x1 = int(np.floor(imageArea.x1Percentage * w))
+        x2 = int(np.ceil(imageArea.x2Percentage * w))
+        y1 = int(np.floor(imageArea.y1Percentage * h))
+        y2 = int(np.ceil(imageArea.y2Percentage * h))
+
+        x1 = max(0, min(w - 1, x1))
+        x2 = max(1, min(w, x2))
+        y1 = max(0, min(h - 1, y1))
+        y2 = max(1, min(h, y2))
+
+        if x2 <= x1 or y2 <= y1:
+            return img
+
+        width = x2 - x1
+        height = y2 - y1
+
+        # Reduce outline thickness on edges that touch the image borders.
+        left_thickness = min(1 if x1 == 0 else 2, width)
+        right_thickness = min(1 if x2 == w else 2, width)
+        top_thickness = min(1 if y1 == 0 else 2, height)
+        bottom_thickness = min(1 if y2 == h else 2, height)
+
+        outlined = img.copy()
+        red = (0, 0, 255)
+
+        outlined[y1:y2, x1 : x1 + left_thickness] = red
+        outlined[y1:y2, x2 - right_thickness : x2] = red
+        outlined[y1 : y1 + top_thickness, x1:x2] = red
+        outlined[y2 - bottom_thickness : y2, x1:x2] = red
+
+        return outlined
+
+    def __save_matched_image(self, curImg: cv2.typing.MatLike, imageArea: Optional[area]) -> None:
+        """
+        Stores the matched image under '/tmp/matched_{self.uuid}_{self.matchedImageIndex}.png'.
+        Adds a red outline if an area-based comparison was used.
         Increments 'self.matchedImageIndex' by one.
 
         Args:
-            srcPath (str): The source path to the image.
+            curImg (cv2.typing.MatLike): The source image to save.
+            imageArea (Optional[area]): Optional comparison area to outline.
         """
-        copy2(srcPath, f"/tmp/matched_{self.uuid}_{self.matchedImageIndex}.png")
+        if imageArea is not None:
+            curImg = self.__draw_area_outline(curImg, imageArea)
+
+        cv2.imwrite(f"/tmp/matched_{self.uuid}_{self.matchedImageIndex}.png", curImg)
         self.matchedImageIndex += 1
 
     def __wait_for_stage_done(self, stageObj: stage) -> subPath:
@@ -162,6 +203,7 @@ class vm:
         start = time()
 
         while True:
+            loop_start = time()
             # Take a new screenshot
             curImgPath: str = f"/tmp/check_{self.uuid}.png"
             self.take_screenshot(curImgPath)
@@ -194,7 +236,7 @@ class vm:
                     # Break if we found a matching image
                     if same >= 1:
                         print(f"\t✅ [{path.basename(check.filePath)}]: SSIM expected geq {check.ssimGeq} - SSIM actual: {ssimIndex}, Images same: {same}")
-                        self.__save_matched_image(curImgPath)
+                        self.__save_matched_image(curImg, check.area)
                         return subPathObj
                     print(f"\t❌ [{path.basename(check.filePath)}]: SSIM expected geq {check.ssimGeq} - SSIM actual: {ssimIndex}, Images same: {same}")
 
@@ -205,7 +247,9 @@ class vm:
                 print(f"⌛ Timeout for stage '{stageObj.name}' reached after {timeoutInS} seconds.")
                 sys.exit(5)
 
-            sleep(0.25)
+            # Avoid checking more frequently than every 0.5 seconds, accounting for processing time.
+            elapsed = time() - loop_start
+            sleep(max(0.0, 0.5 - elapsed))
 
     def __run_stage(self, stageObj: stage) -> str:
         """
