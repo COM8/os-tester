@@ -105,7 +105,7 @@ class vm:
         Args:
             curImg (cv2.typing.MatLike): The current image taken from the VM.
             refImg (cv2.typing.MatLike): The reference image we are awaiting.
-            area (Optional[Area]): Optional sub-rectangle (normalized) used for comparison.
+            area (Optional[area]): Optional sub-rectangle (normalized) used for comparison.
 
         Returns:
             Tuple[float, cv2.typing.MatLike]: A tuple consisting of the structural similarity index and a image diff of both images.

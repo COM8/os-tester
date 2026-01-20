@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import pytest
 
-from os_tester.stages import Area, stages
+from os_tester.stages import area, stages
 
 
 def _write_stage_file(tmp_path, stage_dict) -> None:
@@ -37,9 +37,9 @@ stages:
     _write_stage_file(tmp_path, stage_yaml)
 
     loaded = stages(str(tmp_path), "stages")
-    area = loaded.stagesList[0].pathsList[0].checkList[0].area
+    imageArea = loaded.stagesList[0].pathsList[0].checkList[0].area
 
-    assert isinstance(area, Area)
+    assert isinstance(imageArea, area)
     assert area.x1Percentage == pytest.approx(0.1)
 
 
