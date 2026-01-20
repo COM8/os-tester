@@ -152,7 +152,6 @@ stages:
           checks:
             - file:
               path: 0.png
-              mse_leq: 0.1
               ssim_geq: 0.99
           actions:
             - keyboard_key:
@@ -166,7 +165,6 @@ stages:
           checks:
             - file:
               path: 0_1.png
-              mse_leq: 0.1
               ssim_geq: 0.99
           actions:
             - keyboard_key:
@@ -187,7 +185,6 @@ stages:
           checks:
             - file:
               path: 1.png
-              mse_leq: 0.1
               ssim_geq: 0.99
           actions:
             - keyboard_key:
@@ -202,7 +199,6 @@ stages:
           checks:
             - file:
               path: 2.png
-              mse_leq: 0.1
               ssim_geq: 0.99
           actions:
             - keyboard_key:
@@ -223,7 +219,6 @@ stages:
           checks:
             - file:
               path: 3.png
-              mse_leq: 0.1
               ssim_geq: 0.99
           actions:
             - keyboard_text:

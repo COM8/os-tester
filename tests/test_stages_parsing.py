@@ -25,7 +25,6 @@ stages:
       - path:
           checks:
             - path: "ref.png"
-              mse_leq: 0.0
               ssim_geq: 0.9
               area:
                 x1Percentage: 0.1
@@ -54,7 +53,6 @@ stages:
       - path:
           checks:
             - path: "ref.png"
-              mse_leq: 0.0
               ssim_geq: 0.9
               area:
                 x1Percentage: 0.9
@@ -80,7 +78,6 @@ stages:
       - path:
           checks:
             - path: "ref.png"
-              mse_leq: 0.0
               ssim_geq: 1.5
           actions: []
           nextStage: "done"

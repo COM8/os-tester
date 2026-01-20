@@ -70,13 +70,13 @@ class vm:
             else:
                 raise Exception(f"Invalid stage action: {action}")
 
-    def __img_mse(
+    def __img_diff(
         self,
         curImg: cv2.typing.MatLike,
         refImg: cv2.typing.MatLike,
-    ) -> Tuple[float, cv2.typing.MatLike]:
+    ) -> cv2.typing.MatLike:
         """
-        Calculates the mean square error between two given images.
+        Calculates the image difference between two given images.
         Both images have to have the same size.
 
         Args:
@@ -84,27 +84,24 @@ class vm:
             refImg (cv2.typing.MatLike): The reference image we are awaiting.
 
         Returns:
-            Tuple[float, cv2.typing.MatLike]: A tuple of the mean square error and the image diff.
+            Tcv2.typing.MatLike: The image diff.
         """
         # Use absdiff on float to avoid uint8 saturation masking differences.
-        imgDif: cv2.typing.MatLike = cv2.absdiff(
+        imgDiff: cv2.typing.MatLike = cv2.absdiff(
             curImg.astype(np.float32),
             refImg.astype(np.float32),
         )
-        # Compute Mean Squared Error across all channels.
-        imgDifArr = np.asarray(imgDif, dtype=np.float32)
-        mse = float(np.mean(imgDifArr**2))
-        return mse, imgDif
+        return imgDiff
 
     def __comp_images(
         self,
         curImg: cv2.typing.MatLike,
         refImg: cv2.typing.MatLike,
         imageArea: Optional[area] = None,
-    ) -> Tuple[float, float, cv2.typing.MatLike]:
+    ) -> Tuple[float, cv2.typing.MatLike]:
         """
-        Compares the provided images and calculates the mean square error and structural similarity index.
-        Based on: https://www.tutorialspoint.com/how-to-compare-two-images-in-opencv-python
+        Compares the provided images and calculates the structural similarity index.
+        Based on: https://scikit-image.org/docs/0.25.x/auto_examples/transform/plot_ssim.html
 
         Args:
             curImg (cv2.typing.MatLike): The current image taken from the VM.
@@ -112,7 +109,7 @@ class vm:
             area (Optional[Area]): Optional sub-rectangle (normalized) used for comparison.
 
         Returns:
-            Tuple[float, float, cv2.typing.MatLike]: A tuple consisting of the mean square error, structural similarity index and a image diff of both images.
+            Tuple[float, cv2.typing.MatLike]: A tuple consisting of the structural similarity index and a image diff of both images.
         """
         # Get the dimensions of the original image
         hRef, wRef = refImg.shape[:2]
@@ -135,20 +132,13 @@ class vm:
             refImg = refImg[y1:y2, x1:x2]
             curImgResized = curImgResized[y1:y2, x1:x2]
 
-        mse: float
-        difImg: cv2.typing.MatLike
-
-        mse, difImg = self.__img_mse(refImg, curImgResized)
-
-        if mse == 0.0:
-            # Identical pixels should yield SSIM=1; short-circuit to avoid inconsistent results.
-            return (mse, 1.0, difImg)
+        diffImg: cv2.typing.MatLike = self.__img_diff(refImg, curImgResized)
 
         ssimIndex: float = skimage_metrics.structural_similarity(refImg, curImgResized, channel_axis=-1)
         ssimIndex = min(1.0, max(0.0, ssimIndex))
 
         # ssimIndex = np.clip(a=ssimIndex, a_min=0.0, a_max=1.0)
-        return (mse, ssimIndex, difImg)
+        return (ssimIndex, diffImg)
 
     def __save_matched_image(self, srcPath: str) -> None:
         """
@@ -181,7 +171,6 @@ class vm:
                 sys.exit(6)
             curImg: cv2.typing.MatLike = curImgOpt
 
-            mse: float
             ssimIndex: float
             difImg: cv2.typing.MatLike
 
@@ -196,18 +185,18 @@ class vm:
                 print(f"Checking path {pathIndex}...")
                 for check in subPathObj.checkList:
                     # Compare images by calculating similarity
-                    mse, ssimIndex, difImg = self.__comp_images(curImg, check.fileData, check.area)
-                    same: float = 1 if mse <= check.mseLeq and ssimIndex >= check.ssimGeq else 0
+                    ssimIndex, difImg = self.__comp_images(curImg, check.fileData, check.area)
+                    same: float = 1 if ssimIndex >= check.ssimGeq else 0
 
                     if self.debugPlt:
-                        self.debugPlotObj.update_plot(check.fileData, curImg, difImg, mse, ssimIndex, same)
+                        self.debugPlotObj.update_plot(check.fileData, curImg, difImg, ssimIndex, same)
 
                     # Break if we found a matching image
                     if same >= 1:
-                        print(f"\t✅ [{path.basename(check.filePath)}]: MSE expected leq {check.mseLeq}, SSIM expected geq {check.ssimGeq} - MSE actual: {mse}, SSIM actual: {ssimIndex}, Images same: {same}")
+                        print(f"\t✅ [{path.basename(check.filePath)}]: SSIM expected geq {check.ssimGeq} - SSIM actual: {ssimIndex}, Images same: {same}")
                         self.__save_matched_image(curImgPath)
                         return subPathObj
-                    print(f"\t❌ [{path.basename(check.filePath)}]: MSE expected leq {check.mseLeq}, SSIM expected geq {check.ssimGeq} - MSE actual: {mse}, SSIM actual: {ssimIndex}, Images same: {same}")
+                    print(f"\t❌ [{path.basename(check.filePath)}]: SSIM expected geq {check.ssimGeq} - SSIM actual: {ssimIndex}, Images same: {same}")
 
                 pathIndex += 1
 

@@ -51,7 +51,6 @@ class checkFile:
     filePath: str
     fileData: cv2.typing.MatLike
 
-    mseLeq: float
     ssimGeq: float
     area: Optional[area]
     nextStage: str
@@ -64,7 +63,6 @@ class checkFile:
         self.filePath = path.join(basePath, file_path)
         # Check if the reference images exist and if so load them as OpenCV object
         self.fileData = self.__load(self.filePath)
-        self.mseLeq = _validate_range(_require_key(fileDict, "mse_leq"), "mse_leq", 0.0, None)
         self.ssimGeq = _validate_range(_require_key(fileDict, "ssim_geq"), "ssim_geq", 0.0, 1.0)
 
         self.area = None
