@@ -3,6 +3,7 @@ import os
 import cv2
 import numpy as np
 import pytest
+from typing import Optional
 
 try:
     import libvirt  # noqa: F401
@@ -10,6 +11,7 @@ except Exception:
     pytest.skip("libvirt is required to import os_tester.vm", allow_module_level=True)
 
 from os_tester.vm import vm
+from os_tester.stages import area
 
 
 def _load_image(file_path: str) -> np.ndarray:
@@ -19,9 +21,9 @@ def _load_image(file_path: str) -> np.ndarray:
     return image
 
 
-def _compare_images(img_a: np.ndarray, img_b: np.ndarray) -> tuple[float, float]:
+def _compare_images(img_a: np.ndarray, img_b: np.ndarray, imageArea: Optional[area] = None) -> tuple[float, float]:
     tester = vm(None, "pytest")
-    mse, ssim, _ = tester._vm__comp_images(img_a, img_b)
+    mse, ssim, _ = tester._vm__comp_images(img_a, img_b, imageArea)
     return mse, ssim
 
 
@@ -54,3 +56,41 @@ def test_compare_images_identical() -> None:
 
     assert mse == pytest.approx(0.0, abs=1e-2)
     assert ssim == pytest.approx(1.0, abs=1e-2)
+
+
+def test_compare_images_with_area_excludes_difference() -> None:
+    img_a = np.zeros((10, 10, 3), dtype=np.uint8)
+    img_b = img_a.copy()
+    img_b[0, 0] = [255, 255, 255]
+
+    imageArea = area(
+        {
+            "x1Percentage": 0.5,
+            "x2Percentage": 1.0,
+            "y1Percentage": 0.5,
+            "y2Percentage": 1.0,
+        }
+    )
+    mse, ssim = _compare_images(img_a, img_b, imageArea)
+
+    assert mse == pytest.approx(0.0, abs=1e-6)
+    assert ssim == pytest.approx(1.0, abs=1e-2)
+
+
+def test_compare_images_with_area_includes_difference() -> None:
+    img_a = np.zeros((10, 10, 3), dtype=np.uint8)
+    img_b = img_a.copy()
+    img_b[0, 0] = [255, 255, 255]
+
+    imageArea = area(
+        {
+            "x1Percentage": 0.0,
+            "x2Percentage": 0.9,
+            "y1Percentage": 0.0,
+            "y2Percentage": 0.9,
+        }
+    )
+    mse, ssim = _compare_images(img_a, img_b, imageArea)
+
+    assert mse > 0.0
+    assert ssim < 0.999

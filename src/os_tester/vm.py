@@ -13,7 +13,7 @@ import numpy as np
 from skimage import metrics as skimage_metrics
 
 from os_tester.debug_plot import debugPlot
-from os_tester.stages import stage, stages, subPath
+from os_tester.stages import area, stage, stages, subPath
 
 
 class vm:
@@ -100,6 +100,7 @@ class vm:
         self,
         curImg: cv2.typing.MatLike,
         refImg: cv2.typing.MatLike,
+        imageArea: Optional[area] = None,
     ) -> Tuple[float, float, cv2.typing.MatLike]:
         """
         Compares the provided images and calculates the mean square error and structural similarity index.
@@ -108,6 +109,7 @@ class vm:
         Args:
             curImg (cv2.typing.MatLike): The current image taken from the VM.
             refImg (cv2.typing.MatLike): The reference image we are awaiting.
+            area (Optional[Area]): Optional sub-rectangle (normalized) used for comparison.
 
         Returns:
             Tuple[float, float, cv2.typing.MatLike]: A tuple consisting of the mean square error, structural similarity index and a image diff of both images.
@@ -123,6 +125,15 @@ class vm:
             curImgResized = cv2.resize(curImg, (wRef, hRef))
         else:
             curImgResized = curImg
+
+        # If a sub-area has been defined, cut the image accordingly
+        if imageArea is not None:
+            x1 = int(np.floor(imageArea.x1Percentage * wRef))
+            x2 = int(np.ceil(imageArea.x2Percentage * wRef))
+            y1 = int(np.floor(imageArea.y1Percentage * hRef))
+            y2 = int(np.ceil(imageArea.y2Percentage * hRef))
+            refImg = refImg[y1:y2, x1:x2]
+            curImgResized = curImgResized[y1:y2, x1:x2]
 
         mse: float
         difImg: cv2.typing.MatLike
@@ -185,7 +196,7 @@ class vm:
                 print(f"Checking path {pathIndex}...")
                 for check in subPathObj.checkList:
                     # Compare images by calculating similarity
-                    mse, ssimIndex, difImg = self.__comp_images(curImg, check.fileData)
+                    mse, ssimIndex, difImg = self.__comp_images(curImg, check.fileData, check.area)
                     same: float = 1 if mse <= check.mseLeq and ssimIndex >= check.ssimGeq else 0
 
                     if self.debugPlt:
