@@ -2,7 +2,6 @@ import json
 import sys
 from contextlib import suppress
 from os import path, remove
-from shutil import copy2
 from time import sleep, time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -13,7 +12,7 @@ import numpy as np
 from skimage import metrics as skimage_metrics
 
 from os_tester.debug_plot import debugPlot
-from os_tester.stages import stage, stages, subPath
+from os_tester.stages import area, stage, stages, subPath
 
 
 class vm:
@@ -70,13 +69,13 @@ class vm:
             else:
                 raise Exception(f"Invalid stage action: {action}")
 
-    def __img_mse(
+    def __img_diff(
         self,
         curImg: cv2.typing.MatLike,
         refImg: cv2.typing.MatLike,
-    ) -> Tuple[float, cv2.typing.MatLike]:
+    ) -> cv2.typing.MatLike:
         """
-        Calculates the mean square error between two given images.
+        Calculates the image difference between two given images.
         Both images have to have the same size.
 
         Args:
@@ -84,33 +83,32 @@ class vm:
             refImg (cv2.typing.MatLike): The reference image we are awaiting.
 
         Returns:
-            Tuple[float, cv2.typing.MatLike]: A tuple of the mean square error and the image diff.
+            Tcv2.typing.MatLike: The image diff.
         """
         # Use absdiff on float to avoid uint8 saturation masking differences.
-        imgDif: cv2.typing.MatLike = cv2.absdiff(
+        imgDiff: cv2.typing.MatLike = cv2.absdiff(
             curImg.astype(np.float32),
             refImg.astype(np.float32),
         )
-        # Compute Mean Squared Error across all channels.
-        imgDifArr = np.asarray(imgDif, dtype=np.float32)
-        mse = float(np.mean(imgDifArr**2))
-        return mse, imgDif
+        return imgDiff
 
     def __comp_images(
         self,
         curImg: cv2.typing.MatLike,
         refImg: cv2.typing.MatLike,
-    ) -> Tuple[float, float, cv2.typing.MatLike]:
+        imageArea: Optional[area] = None,
+    ) -> Tuple[float, cv2.typing.MatLike]:
         """
-        Compares the provided images and calculates the mean square error and structural similarity index.
-        Based on: https://www.tutorialspoint.com/how-to-compare-two-images-in-opencv-python
+        Compares the provided images and calculates the structural similarity index.
+        Based on: https://scikit-image.org/docs/0.25.x/auto_examples/transform/plot_ssim.html
 
         Args:
             curImg (cv2.typing.MatLike): The current image taken from the VM.
             refImg (cv2.typing.MatLike): The reference image we are awaiting.
+            area (Optional[area]): Optional sub-rectangle (normalized) used for comparison.
 
         Returns:
-            Tuple[float, float, cv2.typing.MatLike]: A tuple consisting of the mean square error, structural similarity index and a image diff of both images.
+            Tuple[float, cv2.typing.MatLike]: A tuple consisting of the structural similarity index and a image diff of both images.
         """
         # Get the dimensions of the original image
         hRef, wRef = refImg.shape[:2]
@@ -124,30 +122,74 @@ class vm:
         else:
             curImgResized = curImg
 
-        mse: float
-        difImg: cv2.typing.MatLike
+        # If a sub-area has been defined, cut the image accordingly
+        if imageArea is not None:
+            x1 = int(np.floor(imageArea.x1Percentage * wRef))
+            x2 = int(np.ceil(imageArea.x2Percentage * wRef))
+            y1 = int(np.floor(imageArea.y1Percentage * hRef))
+            y2 = int(np.ceil(imageArea.y2Percentage * hRef))
+            refImg = refImg[y1:y2, x1:x2]
+            curImgResized = curImgResized[y1:y2, x1:x2]
 
-        mse, difImg = self.__img_mse(refImg, curImgResized)
-
-        if mse == 0.0:
-            # Identical pixels should yield SSIM=1; short-circuit to avoid inconsistent results.
-            return (mse, 1.0, difImg)
+        diffImg: cv2.typing.MatLike = self.__img_diff(refImg, curImgResized)
 
         ssimIndex: float = skimage_metrics.structural_similarity(refImg, curImgResized, channel_axis=-1)
         ssimIndex = min(1.0, max(0.0, ssimIndex))
 
         # ssimIndex = np.clip(a=ssimIndex, a_min=0.0, a_max=1.0)
-        return (mse, ssimIndex, difImg)
+        return (ssimIndex, diffImg)
 
-    def __save_matched_image(self, srcPath: str) -> None:
+    def __draw_area_outline(self, img: cv2.typing.MatLike, imageArea: area) -> cv2.typing.MatLike:
         """
-        Copies the given image and stores it under '/tmp/matched_{self.uuid}_{self.matchedImageIndex}.png'.
+        Draws a red outline around the selected area on a copy of the provided image.
+        """
+        h, w = img.shape[:2]
+        x1 = int(np.floor(imageArea.x1Percentage * w))
+        x2 = int(np.ceil(imageArea.x2Percentage * w))
+        y1 = int(np.floor(imageArea.y1Percentage * h))
+        y2 = int(np.ceil(imageArea.y2Percentage * h))
+
+        x1 = max(0, min(w - 1, x1))
+        x2 = max(1, min(w, x2))
+        y1 = max(0, min(h - 1, y1))
+        y2 = max(1, min(h, y2))
+
+        if x2 <= x1 or y2 <= y1:
+            return img
+
+        width = x2 - x1
+        height = y2 - y1
+
+        # Reduce outline thickness on edges that touch the image borders.
+        left_thickness = min(1 if x1 == 0 else 2, width)
+        right_thickness = min(1 if x2 == w else 2, width)
+        top_thickness = min(1 if y1 == 0 else 2, height)
+        bottom_thickness = min(1 if y2 == h else 2, height)
+
+        outlined = img.copy()
+        red = (0, 0, 255)
+
+        outlined[y1:y2, x1 : x1 + left_thickness] = red
+        outlined[y1:y2, x2 - right_thickness : x2] = red
+        outlined[y1 : y1 + top_thickness, x1:x2] = red
+        outlined[y2 - bottom_thickness : y2, x1:x2] = red
+
+        return outlined
+
+    def __save_matched_image(self, curImg: cv2.typing.MatLike, imageArea: Optional[area]) -> None:
+        """
+        Stores the matched image under '/tmp/matched_{self.uuid}_{self.matchedImageIndex}.png'.
+        Adds a red outline if an area-based comparison was used.
         Increments 'self.matchedImageIndex' by one.
 
         Args:
-            srcPath (str): The source path to the image.
+            curImg (cv2.typing.MatLike): The source image to save.
+            imageArea (Optional[area]): Optional comparison area to outline.
         """
-        copy2(srcPath, f"/tmp/matched_{self.uuid}_{self.matchedImageIndex}.png")
+        if imageArea is not None:
+            curImg = self.__draw_area_outline(curImg, imageArea)
+
+        cv2.imwrite(f"/tmp/matched_{self.uuid}_{self.matchedImageIndex}.png", curImg)
         self.matchedImageIndex += 1
 
     def __wait_for_stage_done(self, stageObj: stage) -> subPath:
@@ -161,6 +203,7 @@ class vm:
         start = time()
 
         while True:
+            loop_start = time()
             # Take a new screenshot
             curImgPath: str = f"/tmp/check_{self.uuid}.png"
             self.take_screenshot(curImgPath)
@@ -170,7 +213,6 @@ class vm:
                 sys.exit(6)
             curImg: cv2.typing.MatLike = curImgOpt
 
-            mse: float
             ssimIndex: float
             difImg: cv2.typing.MatLike
 
@@ -185,18 +227,18 @@ class vm:
                 print(f"Checking path {pathIndex}...")
                 for check in subPathObj.checkList:
                     # Compare images by calculating similarity
-                    mse, ssimIndex, difImg = self.__comp_images(curImg, check.fileData)
-                    same: float = 1 if mse <= check.mseLeq and ssimIndex >= check.ssimGeq else 0
+                    ssimIndex, difImg = self.__comp_images(curImg, check.fileData, check.area)
+                    same: float = 1 if ssimIndex >= check.ssimGeq else 0
 
                     if self.debugPlt:
-                        self.debugPlotObj.update_plot(check.fileData, curImg, difImg, mse, ssimIndex, same)
+                        self.debugPlotObj.update_plot(check.fileData, curImg, difImg, ssimIndex, same)
 
                     # Break if we found a matching image
                     if same >= 1:
-                        print(f"\t✅ [{path.basename(check.filePath)}]: MSE expected leq {check.mseLeq}, SSIM expected geq {check.ssimGeq} - MSE actual: {mse}, SSIM actual: {ssimIndex}, Images same: {same}")
-                        self.__save_matched_image(curImgPath)
+                        print(f"\t✅ [{path.basename(check.filePath)}]: SSIM expected geq {check.ssimGeq} - SSIM actual: {ssimIndex}, Images same: {same}")
+                        self.__save_matched_image(curImg, check.area)
                         return subPathObj
-                    print(f"\t❌ [{path.basename(check.filePath)}]: MSE expected leq {check.mseLeq}, SSIM expected geq {check.ssimGeq} - MSE actual: {mse}, SSIM actual: {ssimIndex}, Images same: {same}")
+                    print(f"\t❌ [{path.basename(check.filePath)}]: SSIM expected geq {check.ssimGeq} - SSIM actual: {ssimIndex}, Images same: {same}")
 
                 pathIndex += 1
 
@@ -205,7 +247,9 @@ class vm:
                 print(f"⌛ Timeout for stage '{stageObj.name}' reached after {timeoutInS} seconds.")
                 sys.exit(5)
 
-            sleep(0.25)
+            # Avoid checking more frequently than every 0.5 seconds, accounting for processing time.
+            elapsed = time() - loop_start
+            sleep(max(0.0, 0.5 - elapsed))
 
     def __run_stage(self, stageObj: stage) -> str:
         """

@@ -134,15 +134,35 @@ definitions:
     File:
         type: object
         additionalProperties: false
+        description: "Describes a file source for a reference image used during comparison."
         properties:
             path:
                 type: string
-            mse_leq:
-                type: number
+                description: "Path to the reference image used for comparison."
             ssim_geq:
                 type: number
+                description: "Minimum structural similarity index (https://scikit-image.org/docs/0.25.x/auto_examples/transform/plot_ssim.html) required, in the range [0.0, 1.0]."
+            area:
+                "$ref": "#/definitions/Area"
+                description: "Optional sub-rectangle to compare against the same-sized area in the captured OS image."
         required:
             - file
-            - mse_leq
             - ssim_geq
         title: file
+    Area:
+        type: object
+        additionalProperties: false
+        description: "Rectangle defined by X/Y coordinates as percentages of the full image."
+        properties:
+            x1Percentage:
+                type: number
+                description: "Left X coordinate of the comparison area, as a percentage in [0.0, 1.0]."
+            x2Percentage:
+                type: number
+                description: "Right X coordinate of the comparison area, as a percentage in [0.0, 1.0]."
+            y1Percentage:
+                type: number
+                description: "Top Y coordinate of the comparison area, as a percentage in [0.0, 1.0]."
+            y2Percentage:
+                type: number
+                description: "Bottom Y coordinate of the comparison area, as a percentage in [0.0, 1.0]."
